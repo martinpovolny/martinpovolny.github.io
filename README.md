@@ -1,3 +1,8 @@
+## Cars Project Log
+
+ - [Part 1](http://www.hmpf.cz/ml/cart_project_log/part1.html)
+ - [Part 2](http://www.hmpf.cz/ml/cart_project_log/part2.html)
+
 ## Welcome to GitHub Pages
 
 You can use the [editor on GitHub](https://github.com/martinpovolny/martinpovolny.github.io/edit/master/README.md) to maintain and preview the content for your website in Markdown files.
