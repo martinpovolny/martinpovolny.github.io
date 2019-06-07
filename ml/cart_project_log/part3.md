@@ -29,4 +29,4 @@ The experiments showed that with the 3.500 training examples verious (parametriz
  - Interpret results from latest experiments,
  - analyze missclassified examples (so far I postponed this because I found that I have errors in the training data, so I first fixed that),
  - deploy as a service.
- - add Talog to the Colab notebooks to play with more interesting hyperparameter search techniques
+ - add Talos to the Colab notebooks to play with more interesting hyperparameter search techniques.
