@@ -8,6 +8,9 @@ next
  * `oc describe pod/<podname>` -- detailed info about a pod, volumes missing? secrets missing? env variables, SA, etc.
  * `oc logs pod/<podname>` -- get logs from a process in the pod
 
+### Creating deployments and deployments configs
+ * `oc new-app --name my-great-app --docker-image quay.io/hello/hello-world:v1.0`
+ * `oc new-app --name my-great-app --as-deployment-config=true --docker-image quay.io/hello/hello-world:v1.0`
 
 ### Basic `oc` commands for dealing with Deployments and Deployment config
 
