@@ -18,6 +18,7 @@ next
  * `oc set sa` -- setting a SA to e.g. give the `anyuid` scc, needed when a process tries to run as root
  * `oc set resources`
  * `oc set volume --add .... -t pvc --claim-size=1G <depl> --mount-path -- add ...` a volume to a dc or deployment and mount it
+ * `oc set volume --add -t --mount-path=/mnt/somewhere --type=secret --secret <secret_name> <deployment>`
 
 ### Create, setup, add a SA (e.g. to fix a deployment needing a process running as root)
  1. `oc create sa <sa name>`
