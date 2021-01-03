@@ -51,3 +51,8 @@ https://docs.openshift.com/container-platform/4.6/authentication/remove-kubeadmi
 ### Create an edge route with a self-signed certificate
  * `openssl req -x509 -newkey rsa:4096 -keyout key.pem -out cert.pem -days 365 -subj "/C=US/ST=Oregon/L=Portland/O=Company Name/OU=Org/CN=myhost.example.com"`
  * `oc create route edge ts-route --hostname myhost.example.com --key <key.pem> --cert <cert.pem> --service <name_of_service>`
+
+
+### Taints
+ Remove taint from a node:
+* `oc adm taint nodes <node-name> <key>-`
