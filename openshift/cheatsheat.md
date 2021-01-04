@@ -31,6 +31,7 @@ next
  * ... `add-cluster-role-to` -- add cluster/global role
  * Disable self-provisioning `oc adm policy remove-cluster-role-from-user self-provisioner system:authenticated:oauth`
 Details: https://docs.openshift.com/container-platform/3.6/admin_solutions/user_role_mgmt.html (toto: where's 4.6?)
+ * `oc get rolebindings -o wide` -- get overview of groups
 
 #### Remove kubeadmin
 
