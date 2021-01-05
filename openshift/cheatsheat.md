@@ -7,6 +7,7 @@ next
  *`oc get pods` -- get the list of pods
  * `oc describe pod/<podname>` -- detailed info about a pod, volumes missing? secrets missing? env variables, SA, etc.
  * `oc logs pod/<podname>` -- get logs from a process in the pod
+ * `oc get all`
 
 ### Creating deployments and deployments configs
  * `oc new-app --name my-great-app --docker-image quay.io/hello/hello-world:v1.0`
@@ -15,15 +16,15 @@ next
 ### Basic `oc` commands for dealing with Deployments and Deployment config
 
  * `oc set env --from <e.g. secret> --prefix ... <depl>` -- common to share password for a database etc.
- * `oc set sa` -- setting a SA to e.g. give the `anyuid` scc, needed when a process tries to run as root
  * `oc set resources`
  * `oc set volume --add -t pvc --claim-size=1G --mount-path /mnt/somewhere <deployment>` -- add a volume to a dc or deployment and mount it
  * `oc set volume --add --mount-path=/mnt/somewhere --type=secret --secret <secret_name> <deployment>`
+ * `oc set sa` -- (see below) setting a SA to e.g. give the `anyuid` scc (needed when a process tries to run as root)
 
 ### Create, setup, add a SA (e.g. to fix a deployment needing a process running as root)
  1. `oc create sa <sa name>`
  1. `oc adm policy add-scc-to-user anyuid -z <sa name>`
- 1. `oc set sa` ...
+ 1. `oc set sa`
 
 ### Groups etc.
  * `oc adm groups new <group name> <user1> <user2....>`
