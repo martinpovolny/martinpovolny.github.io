@@ -9,4 +9,5 @@
 ## OpenShift
 
  - [Command-line cheatsheet](http://www.hmpf.cz/openshift/cheatsheat.html)
+ - [Developers command-line cheatsheet](http://www.hmpf.cz/openshift/cheatsheat2.html) 
  - [Interesting tools and links](http://www.hmpf.cz/openshift/interesting_tools.md)
