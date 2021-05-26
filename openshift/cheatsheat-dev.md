@@ -35,7 +35,7 @@ Start again:
 # Pull secrets
 
 ```
-oc secrets greate generic --type kubernetes.io/dockerconfigjson -from-file=.dockercfg=${XDG_RUNTIME_DIR}/containers/auth.json
+oc create secret generic quayio --type kubernetes.io/dockerconfigjson --from-file=.dockerconfigjson=${XDG_RUNTIME_DIR}/containers/auth.json
 oc secrets link default <secret> --for pull
 ```
 
