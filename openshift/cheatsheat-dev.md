@@ -31,3 +31,23 @@ Manual:
 
 Start again:
 ```oc set triggers dc/dc_name --from-config```
+
+# Pull secrets
+
+```oc secrets greate generic --type kubernetes.io/dockerconfigjson -from-file=.dockercfg=${XDG_RUNTIME_DIR}/containers/auth.json```
+```oc secrets link default <secret> --for pull```
+
+# Allowing access cross project
+
+See https://docs.openshift.com/container-platform/4.5/openshift_images/managing_images/using-image-pull-secrets.html
+
+Access for pods in project-a to access project-b's images:
+
+```
+oc policy add-role-to-user system:image-puller system:serviceaccount:project-a:default --namespace=project-b
+```
+
+Access for any SA in project-a to access project-b's images:
+```
+oc policy add-role-to-group system:image-puller system:serviceaccounts:project-a --namespace=project-b
+```
