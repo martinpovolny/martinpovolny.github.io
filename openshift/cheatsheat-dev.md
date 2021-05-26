@@ -34,8 +34,10 @@ Start again:
 
 # Pull secrets
 
-```oc secrets greate generic --type kubernetes.io/dockerconfigjson -from-file=.dockercfg=${XDG_RUNTIME_DIR}/containers/auth.json```
-```oc secrets link default <secret> --for pull```
+```
+oc secrets greate generic --type kubernetes.io/dockerconfigjson -from-file=.dockercfg=${XDG_RUNTIME_DIR}/containers/auth.json
+oc secrets link default <secret> --for pull
+```
 
 # Allowing access cross project
 
