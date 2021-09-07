@@ -56,7 +56,7 @@ oc policy add-role-to-group system:image-puller system:serviceaccounts:project-a
 
 # Build Hooks
 
-See https://docs.openshift.com/container-platform/4.8/cicd/builds/triggering-builds-build-hooks.html#builds-configuring-post-commit-build-hooks_triggering-builds-build-hooks
+See https://docs.openshift.com/container-platform/4.5/builds/triggering-builds-build-hooks.html
 
 Use the `postCommit` section of `BuildConfig` or:
 ```
