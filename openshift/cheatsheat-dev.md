@@ -53,3 +53,13 @@ Access for any SA in project-a to access project-b's images:
 ```
 oc policy add-role-to-group system:image-puller system:serviceaccounts:project-a --namespace=project-b
 ```
+
+# Build Hooks
+
+See https://docs.openshift.com/container-platform/4.8/cicd/builds/triggering-builds-build-hooks.html#builds-configuring-post-commit-build-hooks_triggering-builds-build-hooks
+
+Use the `postCommit` section of `BuildConfig` or:
+```
+oc set build-hook bc/mybc --post-commit --command -- <command>
+```
+
