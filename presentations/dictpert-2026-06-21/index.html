@@ -84,7 +84,7 @@ table { font-size: 1.1rem; }
 blockquote { border-left: 4px solid #2c6fad; color: #444; }
 ;" data-marpit-pagination-total="26">
 <h1 id="dictpert">dictpert</h1>
-<h2 id="ai-assisted-research-across-czech-dialect-dictionaries">AI-Assisted Research Across Czech Dialect Dictionaries</h2>
+<h2 id="ai-assisted-research-across-czech-language-dictionaries">AI-Assisted Research Across Czech Language Dictionaries</h2>
 <p>Martin Povolný — 2026-06-21</p>
 </section>
 </foreignObject></svg><svg data-marpit-svg="" viewBox="0 0 1280 720"><foreignObject width="1280" height="720"><section id="2" data-paginate="true" data-theme="default" data-style="section {
@@ -163,7 +163,7 @@ table { font-size: 1.1rem; }
 blockquote { border-left: 4px solid #2c6fad; color: #444; }
 ;" data-marpit-pagination-total="26">
 <h2 id="the-problem">The Problem</h2>
-<p>Seven major Czech dialectological resources exist — each excellent, each isolated:</p>
+<p>Seven major Czech language resources exist — primarily dialectological, with standard and historical dictionaries for full context:</p>
 <table>
 <thead>
 <tr>
@@ -178,19 +178,19 @@ blockquote { border-left: 4px solid #2c6fad; color: #444; }
 </tr>
 <tr>
 <td><strong>SNČJ</strong></td>
-<td>Spoken Czech — phonological variants with attestations</td>
+<td>Czech dialect dictionary — definitions, examples, attestations (A–D only)</td>
 </tr>
 <tr>
 <td><strong>SPJMS</strong></td>
-<td>Spoken Czech in Moravia &amp; Silesia — village-level field cards</td>
+<td>Minor place names — Moravia &amp; Silesia (field names, pronunciation variants)</td>
 </tr>
 <tr>
 <td><strong>SPJČ</strong></td>
-<td>Spoken Czech in Bohemia</td>
+<td>Minor place names — Bohemia</td>
 </tr>
 <tr>
 <td><strong>PSJČ</strong></td>
-<td>Historical dictionary of Czech</td>
+<td>Historical dictionary of Czech (1935–1957)</td>
 </tr>
 <tr>
 <td><strong>ASSC</strong></td>
@@ -1098,7 +1098,7 @@ table { font-size: 1.1rem; }
 blockquote { border-left: 4px solid #2c6fad; color: #444; }
 ;" data-marpit-pagination-total="26">
 <h2 id="aiml--grounding--citation-verification">AI/ML — Grounding &amp; Citation Verification</h2>
-<p>Every <code>[[Dict:word]]</code> link in the final answer is <strong>verified against the lookup log</strong> before delivery.</p>
+<p>Every <code>[[DICT:word]]</code> link in the final answer is <strong>verified against the lookup log</strong> before delivery.</p>
 <h3 id="citation-check-pass">Citation check pass</h3>
 <p>After the main loop, the system:</p>
 <ol>
@@ -1222,10 +1222,11 @@ blockquote { border-left: 4px solid #2c6fad; color: #444; }
 </tr>
 </tbody>
 </table>
-<pre is="marp-pre" data-auto-scaling="downscale-only"><code class="language-python">TOOL_RE        = re.<span class="hljs-built_in">compile</span>(<span class="hljs-string">r&#x27;\[(LOOKUP|FTSEARCH|VSEARCH):[^\]]*\]&#x27;</span>)
-BROKEN_CITE_RE = re.<span class="hljs-built_in">compile</span>(<span class="hljs-string">r&#x27;\[\[(ČJA|SNČJ|…):\[&#x27;</span>)
-INSTR_RE       = re.<span class="hljs-built_in">compile</span>(<span class="hljs-string">r&#x27;v tomto sezení|kolo\s+\d+/\d+|…&#x27;</span>)
-ID_LEAK_RE     = re.<span class="hljs-built_in">compile</span>(<span class="hljs-string">r&#x27;`(cja|sncj|spjms|…)`&#x27;</span>)
+<pre is="marp-pre" data-auto-scaling="downscale-only"><code class="language-text"># representative patterns — full alternation omitted
+TOOL_RE        = re.compile(r&#x27;\[(LOOKUP|FTSEARCH|VSEARCH):[^\]]*\]&#x27;)
+BROKEN_CITE_RE = re.compile(r&#x27;\[\[(ČJA|SNČJ|…):\[&#x27;)
+INSTR_RE       = re.compile(r&#x27;v tomto sezení|kolo\s+\d+/\d+|…&#x27;)
+ID_LEAK_RE     = re.compile(r&#x27;`(cja|sncj|spjms|…)`&#x27;)
 </code></pre>
 </section>
 </foreignObject></svg><svg data-marpit-svg="" viewBox="0 0 1280 720"><foreignObject width="1280" height="720"><section id="13" data-paginate="true" data-theme="default" data-style="section {
@@ -1401,7 +1402,7 @@ blockquote { border-left: 4px solid #2c6fad; color: #444; }
 <p>Typing <code>/automated-eval</code> in Claude Code:</p>
 <ol>
 <li>Reads the <code>.md</code> file into the agent's context</li>
-<li>The Markdown IS the prompt</li>
+<li>The Markdown <strong>IS</strong> the prompt</li>
 <li>Agent executes autonomously using its tools:
 <ul>
 <li><strong>Bash</strong> — run shell commands, query SQLite</li>
@@ -1420,12 +1421,11 @@ For each conversation ID, run the analysis
 block below. Synthesise into a report
 in Step 5.
 
-\<span class="hljs-code">`\`</span>\`python
+python
 import sqlite3, json
 CONV<span class="hljs-emphasis">_ID = &quot;<span class="language-xml"><span class="hljs-tag">&lt;<span class="hljs-name">conversation_id</span>&gt;</span></span>&quot;
 conn = sqlite3.connect(DB)
 ...
-\`\`\`
 
 <span class="hljs-strong">**Leakage scan — run on every final
 assistant message:**</span>
@@ -1433,7 +1433,7 @@ assistant message:**</span>
 </span></code></pre>
 </div>
 <blockquote>
-<p>The Markdown IS the agent's prompt —<br />
+<p>The Markdown <strong>IS</strong> the agent's prompt —<br />
 350 lines of structured procedure,<br />
 a coding agent's SOP.</p>
 </blockquote>
@@ -1932,11 +1932,12 @@ blockquote { border-left: 4px solid #2c6fad; color: #444; }
 <li><strong>Three retrieval modes</strong> per query: exact, full-text, semantic vector</li>
 <li><strong>Geographic synthesis</strong>: ČJA survey points automatically resolved to Obec/Okres</li>
 <li><strong>Cross-dictionary comparison</strong>: one answer draws from ČJA, SNČJ, SPJMS, ASSC in parallel</li>
-<li><strong>Grounded citations</strong>: every <code>[[Dict:word]]</code> link verified before delivery</li>
+<li><strong>Grounded citations</strong>: every <code>[[DICT:word]]</code> link verified before delivery</li>
 <li><strong>Gap discovery</strong>: zero-result queries logged; identifies undocumented lexical territory</li>
 <li><strong>PDF export</strong> of conversations with live dictionary links</li>
 <li><strong>Conversation history</strong> with per-user isolation (Google OAuth)</li>
 <li><strong>Automated eval framework</strong>: structured quality measurement across query corpus</li>
+<li><strong>LLM backend</strong>: Claude (claude-sonnet-4-6 / claude-haiku-4-5) via Anthropic; Qwen3 via OpenCode.ai</li>
 </ul>
 </section>
 </foreignObject></svg><svg data-marpit-svg="" viewBox="0 0 1280 720"><foreignObject width="1280" height="720"><section id="20" data-paginate="true" data-theme="default" data-style="section {

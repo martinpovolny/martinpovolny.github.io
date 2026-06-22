@@ -1,5 +1,6 @@
 ## Presentations
 
+- [**Let's Talk Agentic: Field Notes**](presentations/agentic-talk-2026-06-22/) — personal productivity: wiki, MarkdownViewer, Claude Code, open-code (Jun 2026)
 - [**dictpert** — RAG-powered Dictionary Assistant](presentations/dictpert-2026-06-21/) (Jun 2026)
 - [**slack-search** — Semantic Search over Slack](presentations/slack-search-2026-06-21/) (Jun 2026)
 
