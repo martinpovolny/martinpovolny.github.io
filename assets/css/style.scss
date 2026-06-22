@@ -6,3 +6,23 @@
 img {
   background: white;
 }
+
+body {
+  font-size: 130%;
+}
+
+footer {
+  visibility: hidden;
+  height: 0;
+  margin: 0;
+  padding: 0;
+}
+
+footer::after {
+  content: "martinpovolny.github.io";
+  visibility: visible;
+  display: block;
+  margin-top: 2em;
+  font-size: 0.7em;
+  color: #999;
+}
