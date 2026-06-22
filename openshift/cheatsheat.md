@@ -1,61 +1,140 @@
-# OpenShift command-line cheatsheet
+# OpenShift CLI Cheatsheet
 
-### Quick orientation in a project
+## Quick Orientation
 
- * `oc status` -- displays deployments/demployment configs + pods + routes, exposed routes
-next
- *`oc get pods` -- get the list of pods
- * `oc describe pod/<podname>` -- detailed info about a pod, volumes missing? secrets missing? env variables, SA, etc.
- * `oc logs pod/<podname>` -- get logs from a process in the pod
- * `oc get all`
+```bash
+oc status                              # deployments + pods + routes at a glance
+oc get pods                            # list pods
+oc get all                             # all resources in current project
+oc describe pod/<podname>              # detailed info: volumes, secrets, env, SA
+oc logs pod/<podname>                  # container logs
+oc logs pod/<podname> -f               # follow logs
+```
 
-### Creating deployments and deployments configs
- * `oc new-app --name my-great-app --docker-image quay.io/hello/hello-world:v1.0`
- * `oc new-app --name my-great-app --as-deployment-config=true --docker-image quay.io/hello/hello-world:v1.0`
+## Deployments
 
-### Basic `oc` commands for dealing with Deployments and Deployment config
+### Create from image
 
- * `oc set env --from <e.g. secret> --prefix ... <depl>` -- common to share password for a database etc.
- * `oc set resources`
- * `oc set volume --add -t pvc --claim-size=1G --mount-path /mnt/somewhere <deployment>` -- add a volume to a dc or deployment and mount it
- * `oc set volume --add --mount-path=/mnt/somewhere --type=secret --secret <secret_name> <deployment>`
- * `oc set sa` -- (see below) setting a SA to e.g. give the `anyuid` scc (needed when a process tries to run as root)
+```bash
+oc new-app --name my-app --docker-image quay.io/hello/hello-world:v1.0
+oc new-app --name my-app --as-deployment-config=true --docker-image quay.io/hello/hello-world:v1.0
+```
 
-### Create, setup, add a SA (e.g. to fix a deployment needing a process running as root)
- 1. `oc create sa <sa name>`
- 1. `oc adm policy add-scc-to-user anyuid -z <sa name>`
- 1. `oc set sa`
+### Create from source (S2I)
 
-### Groups etc.
- * `oc adm groups new <group name> <user1> <user2....>`
- * `oc adm policy add-role-to-group <role> group` -- add per project role
- * ... `add-cluster-role-to` -- add cluster/global role
- * Disable self-provisioning `oc adm policy remove-cluster-role-from-user self-provisioner system:authenticated:oauth`
-Details: https://docs.openshift.com/container-platform/3.6/admin_solutions/user_role_mgmt.html (toto: where's 4.6?)
- * `oc get rolebindings -o wide` -- get overview of groups
+```bash
+oc new-app --as-deployment-config --name cool-app \
+  --build-env npm_config_registry=http://npm.company.com/repository/nodejs \
+  nodejs:12~https://github.com/martinpovolny/cool-app#feature-branch \
+  --context-dir app
+```
 
-#### Remove kubeadmin
+### Environment, resources, volumes
 
-https://docs.openshift.com/container-platform/4.6/authentication/remove-kubeadmin.html
+```bash
+oc set env <depl> --from secret/<name> --prefix DB_
+oc set env <depl> --from configmap/<name>
+oc set resources <depl> --limits=cpu=500m,memory=256Mi --requests=cpu=100m,memory=128Mi
+oc set volume <depl> --add -t pvc --claim-size=1G --mount-path /mnt/data
+oc set volume <depl> --add --mount-path=/mnt/secrets --type=secret --secret <secret_name>
+```
 
-`oc delete secrets kubeadmin -n kube-system`
+## ConfigMaps
 
-### Setup htpasswd auth for a cluster
- * `htpasswd -c -B -b user password` ...
- * `oc create secret generic <sec.name> --from-file=htpasswd=<file path> -n openshift_config`
- * `oc edit -n openshift_config oauth/cluster`
- * follow https://docs.openshift.com/container-platform/4.6/authentication/identity_providers/configuring-htpasswd-identity-provider.html (Sample HTPasswd CR)
+```bash
+oc create configmap <name> --from-literal=key=value --from-file=file
+oc set volume <depl> --add -t configmap -m /mount/path --name vol --configmap-name=<cm>
+oc set env <depl> --from configmap/<cm>
+```
 
-### Quota
- * follow https://docs.openshift.com/container-platform/4.6/applications/quotas/quotas-setting-per-project.html (Sample resource quota definitions)
- * `oc apply -f <manifest>`
- * `oc edit quota/<quota_name>`
- 
-### Create an edge route with a self-signed certificate
- * `openssl req -x509 -newkey rsa:4096 -keyout key.pem -out cert.pem -days 365 -subj "/C=US/ST=Oregon/L=Portland/O=Company Name/OU=Org/CN=myhost.example.com"`
- * `oc create route edge ts-route --hostname myhost.example.com --key <key.pem> --cert <cert.pem> --service <name_of_service>`
+## ServiceAccounts & SCCs
 
+```bash
+oc create sa <sa-name>
+oc adm policy add-scc-to-user anyuid -z <sa-name>
+oc set sa <depl> <sa-name>
+```
 
-### Taints
- Remove taint from a node:
-* `oc adm taint nodes <node-name> <key>-`
+## Rollouts (DeploymentConfig)
+
+```bash
+oc set triggers dc/<name> --from-config --remove   # stop auto-triggers
+oc rollout latest dc/<name>                         # manual rollout
+oc set triggers dc/<name> --from-config             # re-enable
+```
+
+## Secrets & Pull Secrets
+
+```bash
+oc create secret generic quayio \
+  --type kubernetes.io/dockerconfigjson \
+  --from-file=.dockerconfigjson=${XDG_RUNTIME_DIR}/containers/auth.json
+oc secrets link default <secret> --for pull
+```
+
+### Cross-project image access
+
+```bash
+oc policy add-role-to-user system:image-puller \
+  system:serviceaccount:project-a:default --namespace=project-b
+```
+
+## Routes
+
+### Edge route with self-signed cert
+
+```bash
+openssl req -x509 -newkey rsa:4096 -keyout key.pem -out cert.pem -days 365 \
+  -subj "/C=US/ST=Oregon/L=Portland/O=Company/OU=Org/CN=myhost.example.com"
+oc create route edge ts-route \
+  --hostname myhost.example.com --key key.pem --cert cert.pem --service <svc>
+```
+
+## RBAC & Groups
+
+```bash
+oc adm groups new <group> <user1> <user2>
+oc adm policy add-role-to-group <role> <group>           # project-scoped
+oc adm policy add-cluster-role-to-group <role> <group>   # cluster-scoped
+oc get rolebindings -o wide
+```
+
+### Disable self-provisioning
+
+```bash
+oc adm policy remove-cluster-role-from-user self-provisioner system:authenticated:oauth
+```
+
+### Remove kubeadmin
+
+```bash
+oc delete secret kubeadmin -n kube-system
+```
+
+## htpasswd Identity Provider
+
+```bash
+htpasswd -c -B -b /tmp/htpasswd user password
+oc create secret generic htpasswd-secret --from-file=htpasswd=/tmp/htpasswd -n openshift-config
+oc edit oauth/cluster -n openshift-config
+```
+
+## Quotas
+
+```bash
+oc apply -f <quota-manifest.yaml>
+oc edit quota/<quota-name>
+```
+
+## Build Hooks
+
+```bash
+oc set build-hook bc/<buildconfig> --post-commit --command -- <command>
+```
+
+## Taints
+
+```bash
+oc adm taint nodes <node-name> <key>-                      # remove
+oc adm taint nodes <node-name> <key>=<value>:<effect>      # add
+```

@@ -1,13 +1,15 @@
-## Cars Project Log
+## Presentations
 
- - [Part 1](http://www.hmpf.cz/ml/cart_project_log/part1.html)
- - [Part 2](http://www.hmpf.cz/ml/cart_project_log/part2.html)
- - [Part 3](http://www.hmpf.cz/ml/cart_project_log/part3.html)
- - [Part 4](http://www.hmpf.cz/ml/cart_project_log/part4.html)
+- [dictpert — RAG-powered Dictionary Assistant](presentations/dictpert-2026-06-21/) (2026-06-21)
+- [slack-search — Semantic Search over Slack](presentations/slack-search-2026-06-21/) (2026-06-21)
 
+## Cheatsheets
 
-## OpenShift
+- [OpenShift CLI cheatsheet](openshift/cheatsheat.html)
 
- - [Command-line cheatsheet](http://www.hmpf.cz/openshift/cheatsheat.html)
- - [Developer's command-line cheatsheet](http://www.hmpf.cz/openshift/cheatsheat-dev.html) 
- - [Interesting tools and links](http://www.hmpf.cz/openshift/interesting_tools.md)
+## Archive
+
+> Old content kept for reference. May be outdated.
+
+- [Cars ML Project Log](ml/cart_project_log/part1.html) — image classification with Keras (2019, 4 parts)
+- [Anedi](anedi/) — shipping documentation app (privacy policy)
