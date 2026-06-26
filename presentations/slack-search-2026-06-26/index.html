@@ -895,24 +895,41 @@ blockquote { border-left: 4px solid #2c6fad; color: #444; }
 .grid2x2 img { width: 100%; border: 1px solid #ddd; border-radius: 4px; }
 .grid2x2 .cap { font-size: 0.9rem; color: #666; text-align: center; margin-top: -0.3rem; }
 ;" data-marpit-pagination-total="16">
-<h2 id="scheduled-refresh--always-up-to-date">Scheduled Refresh — Always Up to Date</h2>
-<p>A macOS launchd job runs <code>refresh</code> every hour in the background:</p>
-<pre is="marp-pre" data-auto-scaling="downscale-only"><code class="language-bash"><span class="hljs-comment"># Install (one-time)</span>
-<span class="hljs-built_in">ln</span> -sf <span class="hljs-string">&quot;<span class="hljs-subst">$(pwd)</span>/com.user.slack-refresh.plist&quot;</span> ~/Library/LaunchAgents/
-launchctl bootstrap gui/501 ~/Library/LaunchAgents/com.user.slack-refresh.plist
+<h2 id="real-world-workflow--alert-duty-briefing">Real-World Workflow — Alert Duty Briefing</h2>
+<p>A Claude Code custom command (<code>/alert-duty</code>) uses slack-search as its data layer to generate an overnight alert duty report:</p>
+<div class="columns">
+<div>
+<p><strong>What it does:</strong></p>
+<ol>
+<li>Checks archive freshness (last sync time)</li>
+<li>Queries <code>cost-mgmt-prod-alerts</code> for overnight alerts</li>
+<li>Searches for human discussion about issues</li>
+<li>Runs regex grep for recurring patterns (<code>OOM</code>, <code>timeout</code>, <code>deadlock</code>…)</li>
+<li>Generates weekly trend data</li>
+<li>Writes a formatted report</li>
+</ol>
+</div>
+<div>
+<p><strong>How it uses slack-search:</strong></p>
+<pre is="marp-pre" data-auto-scaling="downscale-only"><code class="language-bash"><span class="hljs-comment"># Step 1 — overnight alerts</span>
+slack-search search <span class="hljs-string">&quot;
+SELECT datetime(timestamp, &#x27;unixepoch&#x27;),
+       substr(text, 1, 300)
+FROM messages m JOIN channels c ...
+WHERE c.name = &#x27;cost-mgmt-prod-alerts&#x27;
+  AND timestamp &gt; unixepoch(&#x27;now&#x27;,&#x27;-12h&#x27;)&quot;</span>
 
-<span class="hljs-comment"># Pause for PTO / weekends</span>
-launchctl bootout gui/501/com.user.slack-refresh
-
-<span class="hljs-comment"># Resume</span>
-launchctl bootstrap gui/501 ~/Library/LaunchAgents/com.user.slack-refresh.plist
+<span class="hljs-comment"># Step 2 — pattern search</span>
+slack-search grep \
+  -E <span class="hljs-string">&quot;rate.limit|trino.*down|OOM&quot;</span> \
+  -c cost-mgmt-prod-alerts \
+  --since <span class="hljs-string">&quot;7 days ago&quot;</span>
 </code></pre>
-<ul>
-<li>Runs as your user, fires after sleep/wake, auto-starts on login</li>
-<li>Refreshes all <strong>subscribed</strong> channels incrementally</li>
-<li><strong>Auth error detection:</strong> if credentials expire, exits with code 2 and logs a clear message — just re-copy a fresh curl from Chrome DevTools</li>
-<li>Logs to <code>/tmp/slack-refresh.log</code> with timestamps</li>
-</ul>
+</div>
+</div>
+<div class="box">
+<p><strong>Always fresh:</strong> a macOS launchd job runs <code>slack-search refresh</code> hourly in the background — the archive stays current without manual intervention. Auth errors are detected automatically.</p>
+</div>
 </section>
 </foreignObject></svg><svg data-marpit-svg="" viewBox="0 0 1280 720"><foreignObject width="1280" height="720"><section id="14" data-paginate="true" data-theme="default" data-style="section {
   font-size: 1.4rem;
@@ -968,19 +985,40 @@ blockquote { border-left: 4px solid #2c6fad; color: #444; }
 .grid2x2 .cap { font-size: 0.9rem; color: #666; text-align: center; margin-top: -0.3rem; }
 ;" data-marpit-pagination-total="16">
 <h2 id="cross-project--querying-slack-from-any-codebase">Cross-Project — Querying Slack from Any Codebase</h2>
-<p>A Claude Code slash command makes the Slack archive available <strong>inside any project session</strong>.</p>
-<pre is="marp-pre" data-auto-scaling="downscale-only"><code class="language-markdown"><span class="hljs-section"># .claude/commands/search-slack.md  (or ~/.claude/commands/ for global access)</span>
+<p>Claude Code slash commands make the Slack archive available <strong>inside any project session</strong>.</p>
+<div class="columns">
+<div>
+<p><strong>Simple search:</strong></p>
+<pre is="marp-pre" data-auto-scaling="downscale-only"><code class="language-markdown"><span class="hljs-section"># ~/.claude/commands/search-slack.md</span>
 
-Search the local Slack archive for discussions relevant to the current task.
+Search the local Slack archive.
 
-Run: uv run --project /path/to/slack-search slack-search nlq &quot;$ARGUMENTS&quot;
+Run: uv run --project ~/Projects/slack-search \
+  slack-search nlq &quot;$ARGUMENTS&quot;
 </code></pre>
-<p><strong>Example workflow:</strong></p>
-<pre is="marp-pre" data-auto-scaling="downscale-only"><code>User: /search-slack &quot;kubernetes OOMKill cost-mgmt namespace&quot;
-→ Finds 3 threads from March discussing the same issue
-→ Links to the incident thread where the fix was agreed
-→ Claude uses this context to inform the current fix
+<pre is="marp-pre" data-auto-scaling="downscale-only"><code>User: /search-slack &quot;OOMKill in cost-mgmt&quot;
+→ Finds 3 threads from March
+→ Claude uses context to inform the fix
 </code></pre>
+</div>
+<div>
+<p><strong>Complex workflow:</strong></p>
+<pre is="marp-pre" data-auto-scaling="downscale-only"><code class="language-markdown"><span class="hljs-section"># .claude/commands/alert-duty.md</span>
+
+Generate alert duty briefing from
+Slack alert channels.
+
+Uses: slack-search SQL, grep, NLQ
+Also: Jira MCP, GlitchTip, Snyk, Konflux
+Output: formatted report with trend chart
+</code></pre>
+<pre is="marp-pre" data-auto-scaling="downscale-only"><code>User: /alert-duty
+→ Queries 4 alert channels
+→ Cross-references with Jira tickets
+→ Generates full briefing report
+</code></pre>
+</div>
+</div>
 <blockquote>
 <p>Past Slack discussions become searchable institutional memory,<br />
 accessible directly from the coding context.</p>
