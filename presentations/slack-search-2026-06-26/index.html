@@ -730,16 +730,23 @@ blockquote { border-left: 4px solid #2c6fad; color: #444; }
 .grid2x2 .cap { font-size: 0.9rem; color: #666; text-align: center; margin-top: -0.3rem; }
 ;" data-marpit-pagination-total="16">
 <h2 id="live-search--slacks-own-search-api">Live Search — Slack's Own Search API</h2>
-<p><code>live-search</code> queries Slack's built-in search and <strong>caches results locally</strong> — making them available for future SQL and NLQ queries.</p>
-<pre is="marp-pre" data-auto-scaling="downscale-only"><code class="language-bash">slack-search live-search --curl <span class="hljs-string">&quot;<span class="hljs-subst">$(cat .curl)</span>&quot;</span> <span class="hljs-string">&quot;out of memory&quot;</span>
-slack-search live-search --curl <span class="hljs-string">&quot;<span class="hljs-subst">$(cat .curl)</span>&quot;</span> <span class="hljs-string">&#x27;error in:#cost-mgmt-dev after:2024-01-01&#x27;</span>
+<div class="columns">
+<div>
+<p>Queries Slack's built-in search and <strong>caches results locally</strong> — making them available for future SQL and NLQ queries.</p>
+<pre is="marp-pre" data-auto-scaling="downscale-only"><code class="language-bash">slack-search live-search \
+  --curl <span class="hljs-string">&quot;<span class="hljs-subst">$(cat .curl)</span>&quot;</span> <span class="hljs-string">&quot;OSAC POC&quot;</span>
 </code></pre>
 <ul>
-<li>Supports Slack search operators: <code>in:#channel</code>, <code>from:@user</code>, <code>before:</code>, <code>after:</code>, <code>&quot;exact phrase&quot;</code></li>
-<li>Results inserted into local DB via <code>INSERT OR IGNORE</code> — never conflicts with incremental downloads</li>
+<li>Slack search operators: <code>in:#channel</code>, <code>from:@user</code>, <code>before:</code>, <code>after:</code>, <code>&quot;exact phrase&quot;</code></li>
+<li>Results cached into local DB — never conflicts with incremental downloads</li>
 <li>Available in the web UI as the <strong>Slack Search</strong> tab</li>
+<li>Click any row to read the full message below the table</li>
 </ul>
-<p><a href="screenshot-ui-live-search.png" target="_blank"><img src="screenshot-ui-live-search.png" style="height:220px; display:block; margin:0 auto;" /></a></p>
+</div>
+<div>
+<p><a href="screenshot-live-search-results.png" target="_blank"><img src="screenshot-live-search-results.png" style="width:100%; border:1px solid #ddd; border-radius:4px;" /></a></p>
+</div>
+</div>
 </section>
 </foreignObject></svg><svg data-marpit-svg="" viewBox="0 0 1280 720"><foreignObject width="1280" height="720"><section id="12" data-paginate="true" data-theme="default" data-style="section {
   font-size: 1.4rem;
