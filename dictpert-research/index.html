@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dictpert Research — RAG Quality Improvements</title>
+<style>
+  body {
+    font-family: -apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+    font-size: 14px;
+    line-height: 1.6;
+    color: #24292e;
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 40px 24px;
+    background: #fff;
+  }
+  h1 {
+    font-size: 32px;
+    border-bottom: 2px solid #0969da;
+    padding-bottom: 12px;
+    margin-bottom: 24px;
+  }
+  h2 {
+    font-size: 20px;
+    margin-top: 32px;
+    border-bottom: 1px solid #e1e4e8;
+    padding-bottom: 6px;
+  }
+  .card {
+    border: 1px solid #e1e4e8;
+    border-radius: 6px;
+    padding: 20px;
+    margin: 16px 0;
+    background: #f6f8fa;
+  }
+  .card h3 {
+    margin-top: 0;
+    font-size: 18px;
+  }
+  .card p {
+    margin: 8px 0;
+  }
+  .meta {
+    color: #57606a;
+    font-size: 13px;
+  }
+  a {
+    color: #0969da;
+    text-decoration: none;
+  }
+  a:hover {
+    text-decoration: underline;
+  }
+  .btn {
+    display: inline-block;
+    background: #0969da;
+    color: white;
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-weight: 600;
+    margin-top: 8px;
+  }
+  .btn:hover {
+    background: #0550ae;
+    text-decoration: none;
+  }
+  .highlight {
+    background: #fff8dc;
+    border-left: 4px solid #fb8500;
+    padding: 12px;
+    margin: 16px 0;
+  }
+</style>
+</head>
+<body>
+
+<h1>📚 Dictpert Research: RAG Quality Improvements</h1>
+
+<p class="meta">
+  <strong>Project:</strong> <a href="https://dictpert.hmpf.cz">Dictpert — Czech Dialectology AI Assistant</a><br>
+  <strong>Research Period:</strong> June 2026<br>
+  <strong>Status:</strong> Phase 1 design complete, implementation pending
+</p>
+
+<div class="highlight">
+  <strong>🎯 Goal:</strong> Improve answer quality from <strong>13/17 queries passing (76%)</strong> to <strong>15-16/17 (88-94%)</strong> through state-of-the-art RAG techniques from 2024-2026 research literature.
+</div>
+
+<h2>📄 Documents</h2>
+
+<div class="card">
+  <h3>🔬 RAG Quality Research Review (2024-2026)</h3>
+  <p class="meta">Comprehensive literature review · 7 techniques analyzed · Priority matrix</p>
+  <p>
+    Analysis of state-of-the-art RAG improvements from 2024-2026 research: Self-RAG (ICLR 2024),
+    HyDE (ACL 2023), RAPTOR (ICLR 2024), CRAG, cross-encoder reranking, query rewriting,
+    and domain-specific embeddings. Includes effort vs. impact assessment for dictpert use case.
+  </p>
+  <p><strong>Key finding:</strong> The core problem is NOT infrastructure (272k entries, 9 dictionaries)
+  but query-document vocabulary gap and citation hallucination — both solvable with prompt engineering +
+  lightweight inference.</p>
+  <a href="rag-quality-2024.html" class="btn">Read Research Review →</a>
+</div>
+
+<div class="card">
+  <h3>⚙️ Phase 1 Implementation Design</h3>
+  <p class="meta">Detailed code design · 3 techniques · 1-week timeline</p>
+  <p>
+    Implementation guide for Phase 1 quick wins: Self-RAG critique (prompt-only),
+    HyDE embeddings (1 day), and query rewriting (1 day). Includes exact code snippets,
+    integration points, testing protocol, and success criteria.
+  </p>
+  <p><strong>Expected impact:</strong> 13/17 → 15/17 queries passing (88%),
+  citation verification rate >90%, FTS precision +30-45%.</p>
+  <a href="implementation-design.html" class="btn">Read Implementation Design →</a>
+</div>
+
+<h2>🎯 Phase 1 Techniques (Ready to Implement)</h2>
+
+<table style="width: 100%; border-collapse: collapse; margin: 16px 0;">
+  <thead>
+    <tr style="background: #f6f8fa;">
+      <th style="padding: 8px; border: 1px solid #e1e4e8; text-align: left;">Technique</th>
+      <th style="padding: 8px; border: 1px solid #e1e4e8; text-align: left;">Effort</th>
+      <th style="padding: 8px; border: 1px solid #e1e4e8; text-align: left;">Impact</th>
+      <th style="padding: 8px; border: 1px solid #e1e4e8; text-align: left;">Target Problem</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td style="padding: 8px; border: 1px solid #e1e4e8;"><strong>Self-RAG Critique</strong></td>
+      <td style="padding: 8px; border: 1px solid #e1e4e8;">Low (prompt)</td>
+      <td style="padding: 8px; border: 1px solid #e1e4e8;">High</td>
+      <td style="padding: 8px; border: 1px solid #e1e4e8;">Citation hallucination</td>
+    </tr>
+    <tr>
+      <td style="padding: 8px; border: 1px solid #e1e4e8;"><strong>HyDE Embeddings</strong></td>
+      <td style="padding: 8px; border: 1px solid #e1e4e8;">Low (1 day)</td>
+      <td style="padding: 8px; border: 1px solid #e1e4e8;">High</td>
+      <td style="padding: 8px; border: 1px solid #e1e4e8;">Vocabulary mismatch (Q14/Q15)</td>
+    </tr>
+    <tr>
+      <td style="padding: 8px; border: 1px solid #e1e4e8;"><strong>Query Rewriting</strong></td>
+      <td style="padding: 8px; border: 1px solid #e1e4e8;">Low (1 day)</td>
+      <td style="padding: 8px; border: 1px solid #e1e4e8;">High</td>
+      <td style="padding: 8px; border: 1px solid #e1e4e8;">FTS recall failures</td>
+    </tr>
+  </tbody>
+</table>
+
+<h2>📖 Key Research Papers</h2>
+
+<ul>
+  <li><strong>Self-RAG</strong>: <a href="https://arxiv.org/abs/2310.11511">Asai et al., ICLR 2024</a> — Self-reflective retrieval with critique tokens</li>
+  <li><strong>HyDE</strong>: <a href="https://arxiv.org/abs/2212.10496">Gao et al., ACL 2023</a> — Hypothetical document embeddings</li>
+  <li><strong>RAPTOR</strong>: <a href="https://arxiv.org/abs/2401.18059">Sarthi et al., ICLR 2024</a> — Recursive clustering with summaries</li>
+  <li><strong>CRAG</strong>: <a href="https://arxiv.org/abs/2401.15884">Yan et al., 2024</a> — Corrective retrieval strategies</li>
+  <li><strong>RAG Survey 2024</strong>: <a href="https://arxiv.org/abs/2410.12837">Comprehensive overview</a> — 1,200+ papers analyzed</li>
+</ul>
+
+<h2>🔗 Related Resources</h2>
+
+<ul>
+  <li><a href="../dictpert-evals/">Evaluation Reports</a> — Full eval history with pass/fail metrics</li>
+  <li><a href="https://dictpert.hmpf.cz">Dictpert Live Demo</a> — Try the current system</li>
+  <li><a href="https://github.com/yourusername/dictpert">GitHub Repository</a> — Source code</li>
+</ul>
+
+<hr style="margin: 48px 0; border: none; border-top: 1px solid #e1e4e8;">
+
+<footer style="text-align: center; color: #57606a; font-size: 12px;">
+  <p>Research conducted June 2026 | <a href="https://martinpovolny.github.io">Martin Povolný</a></p>
+</footer>
+
+</body>
+</html>

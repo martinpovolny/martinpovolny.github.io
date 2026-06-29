@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RAG Improvements Implementation — Dictpert</title>
+<style>
+  body { 
+    font-family: -apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+    font-size: 14px; 
+    line-height: 1.6; 
+    color: #24292e; 
+    max-width: 960px; 
+    margin: 0 auto; 
+    padding: 40px 24px;
+    background: #fff;
+  }
+  h1 { 
+    font-size: 28px; 
+    border-bottom: 1px solid #e1e4e8; 
+    padding-bottom: 12px;
+    margin-top: 24px;
+  }
+  h2 { 
+    font-size: 20px; 
+    border-bottom: 1px solid #f0f0f0; 
+    padding-bottom: 6px; 
+    margin-top: 32px;
+  }
+  h3 { 
+    font-size: 16px; 
+    margin-top: 24px;
+  }
+  h4 { 
+    font-size: 14px; 
+    margin-top: 20px;
+    font-weight: 600;
+  }
+  table { 
+    border-collapse: collapse; 
+    width: 100%; 
+    font-size: 13px; 
+    margin: 16px 0;
+  }
+  th { 
+    text-align: left; 
+    background: #f6f8fa; 
+    border: 1px solid #e1e4e8; 
+    padding: 6px 10px; 
+    font-size: 12px;
+    font-weight: 600;
+  }
+  td { 
+    border: 1px solid #e1e4e8; 
+    padding: 6px 10px; 
+    vertical-align: top;
+  }
+  code { 
+    font-family: "SFMono-Regular",Consolas,"Liberation Mono",Menlo,monospace; 
+    font-size: 12px;
+    background: #f6f8fa; 
+    padding: 2px 6px; 
+    border-radius: 3px;
+  }
+  pre { 
+    background: #f6f8fa; 
+    padding: 16px; 
+    border-radius: 6px; 
+    font-size: 12px; 
+    line-height: 1.5;
+    overflow-x: auto;
+  }
+  pre code { 
+    background: none; 
+    padding: 0;
+  }
+  blockquote { 
+    border-left: 3px solid #0969da; 
+    margin: 16px 0; 
+    padding-left: 16px; 
+    color: #57606a;
+  }
+  hr { 
+    border: none; 
+    border-top: 1px solid #e1e4e8; 
+    margin: 32px 0;
+  }
+  a {
+    color: #0969da;
+    text-decoration: none;
+  }
+  a:hover {
+    text-decoration: underline;
+  }
+  ul, ol {
+    padding-left: 24px;
+    margin: 8px 0;
+  }
+  li {
+    margin: 4px 0;
+  }
+  .header {
+    background: #f6f8fa;
+    border: 1px solid #e1e4e8;
+    border-radius: 6px;
+    padding: 16px;
+    margin-bottom: 24px;
+  }
+  .header p {
+    margin: 4px 0;
+  }
+  .timeline {
+    background: #fff8dc;
+    border-left: 4px solid #fb8500;
+    padding: 12px;
+    margin: 16px 0;
+  }
+</style>
+</head>
+<body>
+<div class="header">
+  <p><strong>Project:</strong> <a href="https://dictpert.hmpf.cz">Dictpert — Czech Dialectology AI Assistant</a></p>
+  <p><strong>Document:</strong> RAG Improvements — Phase 1 Implementation Design</p>
+  <p><strong>Date:</strong> 2026-06-29</p>
+  <p><strong>Links:</strong> 
+    <a href="rag-quality-2024.html">Research Review</a> | 
+    <a href="../dictpert-evals/">Evaluation Reports</a>
+  </p>
+</div>
+
+<h1 id="rag-quality-improvements-implementation-design">RAG Quality Improvements — Implementation Design</h1>
+<p><strong>Phase 1 techniques</strong>: Self-RAG critique, HyDE embeddings, Query rewriting<br />
+<strong>Estimated effort</strong>: 1 week<br />
+<strong>Expected impact</strong>: 13/17 → 15/17 queries passing</p>
+<hr />
+<h2 id="1-self-rag-critique-priority-highest">1. Self-RAG Critique (Priority: 🔥 Highest)</h2>
+<p><strong>Target problem</strong>: Citation hallucination — model cites <code>[[DICT:word]]</code> that never appeared in LOOKUP results</p>
+<p><strong>Research</strong>: <a href="https://arxiv.org/abs/2310.11511">Self-RAG, ICLR 2024</a></p>
+<h3 id="implementation-approach">Implementation approach</h3>
+<p><strong>Option A: Prompt-only (zero-shot)</strong> ⭐ Recommended<br />
+- Add critique instruction to <code>prompts/system_dict.md</code> after tool result injection<br />
+- Model self-evaluates: "Podporuje tento záznam mé zamýšlené citace?"<br />
+- No code changes, immediate deployment</p>
+<p><strong>Option B: Structured output with critique tool</strong><br />
+- Add <code>[CRITIQUE: ...]</code> as a real tool alongside <code>[LOOKUP:]</code><br />
+- Model must emit critique before proceeding to next tool<br />
+- More structured but requires code changes</p>
+<h3 id="changes-needed-option-a-prompt-only">Changes needed (Option A — prompt-only)</h3>
+<h4 id="file-promptssystem_dictmd">File: <code>prompts/system_dict.md</code></h4>
+<p><strong>Current</strong> (after tool result injection):</p>
+<pre><code>Výsledky vyhledávání (kolo {iteration + 1} z {MAX_LOOKUP_ITERATIONS}):
+
+[ČJA: hý | 3 výsledky]
+HESLO: „hý&quot; [headword] | výklad: citoslovce, povel pro koně...
+</code></pre>
+<p><strong>New</strong> (add critique step):</p>
+<pre><code>Výsledky vyhledávání (kolo {iteration + 1} z {MAX_LOOKUP_ITERATIONS}):
+
+[ČJA: hý | 3 výsledky]
+HESLO: „hý&quot; [headword] | výklad: citoslovce, povel pro koně...
+
+POKYNY PO OBDRŽENÍ VÝSLEDKŮ:
+Před dalším voláním nástroje nebo formulací odpovědi si polož tyto otázky:
+
+1. **Relevance**: Odpovídají tyto výsledky na uživatelovu otázku?
+   - Pokud NE: zkus jiný vyhledávací termín, jiný slovník, nebo jiný nástroj (ftsearch/vsearch).
+
+2. **Úplnost**: Mám dostatek informací pro kompletní odpověď?
+   - Pokud NE: pokračuj ve vyhledávání (další termíny, další slovníky).
+
+3. **Citace**: Každé heslo, které chci citovat pomocí [[DICT:slovo]], jsem skutečně našel/našla pomocí nástroje?
+   - Pokud NE: NESMÍŠ ho citovat. Pokud je to klíčový termín, vyhledej ho znovu.
+
+**Pravidlo**: Nikdy necituj heslo, které se neobjevilo ve výsledcích vyhledávání v tomto sezení.
+</code></pre>
+<p><strong>Testing</strong>:<br />
+1. Run Q15 (Jak se říká holce na Brněnsku?)<br />
+   - Current failure: cites non-existent headwords<br />
+   - Expected: model self-corrects, searches for missing terms<br />
+2. Run Q17 (bouda variants)<br />
+   - Check: all <code>[[ČJA:búda]]</code> citations backed by LOOKUP?</p>
+<p><strong>Metrics</strong>:<br />
+- Citation verification rate: % of <code>[[DICT:word]]</code> that appeared in prior LOOKUP results<br />
+- Self-correction rate: % of iterations where model re-searches after zero/poor results<br />
+- False positive rate: citations with no LOOKUP backing</p>
+<p><strong>Estimated effort</strong>: 2 hours (prompt edit + test on 5 queries)</p>
+<hr />
+<h2 id="2-hyde-hypothetical-document-embeddings-priority-high">2. HyDE: Hypothetical Document Embeddings (Priority: 🔥 High)</h2>
+<p><strong>Target problem</strong>: Vocabulary mismatch — users say "holka", entries say "koc"</p>
+<p><strong>Research</strong>: <a href="https://arxiv.org/abs/2212.10496">HyDE, ACL 2023</a></p>
+<h3 id="implementation-approach_1">Implementation approach</h3>
+<p>Generate a hypothetical dictionary entry that would answer the query, embed THAT instead of the raw query.</p>
+<p><strong>Example</strong>:</p>
+<pre><code>Query: &quot;Jak se říká holce na Brněnsku?&quot;
+↓
+HyDE generates:
+&quot;koc: brněnský slangový výraz pro děvče, mladou ženu. 
+Používá se v hanteci (brněnském slangu). 
+Příklad: 'Viděl jsem tam jednoho koce.'&quot;
+↓
+Embed the fake entry (not the query)
+↓
+Vector search finds real &quot;koc ~ děvče [hantec.cz]&quot;
+</code></pre>
+<h3 id="changes-needed">Changes needed</h3>
+<h4 id="file-dictsvector_dbpy">File: <code>dicts/vector_db.py</code></h4>
+<p><strong>New helper function</strong>:</p>
+<pre><code class="language-python">def _generate_hypothetical_entry(query: str, dict_context: str = &quot;&quot;) -&gt; str:
+    &quot;&quot;&quot;
+    Generate a hypothetical dictionary entry for HyDE embedding.
+
+    Args:
+        query: User's natural language question
+        dict_context: Optional hint about dictionary type (dialect, standard, etc.)
+
+    Returns:
+        Synthetic dictionary entry (2-3 sentences)
+    &quot;&quot;&quot;
+    from providers import complete
+
+    prompt = f&quot;&quot;&quot;Představ si, že jsi lexikograf. Napiš krátké slovníkové heslo (2-3 věty), 
+které by odpovídalo na tento dotaz:
+
+&quot;{query}&quot;
+
+{dict_context}
+
+Heslo by mělo obsahovat:
+- Headword (klíčové slovo)
+- Stručný výklad (co to znamená)
+- Kontext použití nebo příklad
+
+Formát: &quot;headword: výklad. Kontext/příklad.&quot;
+
+Vrať POUZE slovníkové heslo, bez dalšího textu.&quot;&quot;&quot;
+
+    # Use fast model for HyDE generation
+    hyde_entry = complete(prompt, model=&quot;claude-haiku-4-5&quot;, max_tokens=200)
+    return hyde_entry.strip()
+</code></pre>
+<p><strong>Modified <code>search()</code> method</strong>:</p>
+<pre><code class="language-python">class VectorIndex:
+    def search(
+        self, 
+        query: str, 
+        limit: int = 5, 
+        dict_ids: list[str] | None = None,
+        use_hyde: bool = True  # NEW parameter
+    ) -&gt; list[VectorResult]:
+        &quot;&quot;&quot;
+        Search vector index for semantically similar entries.
+
+        Args:
+            query: Search query (user's natural language question)
+            limit: Max results to return
+            dict_ids: Filter to specific dictionaries (e.g., ['cja', 'sncj'])
+            use_hyde: If True, generate hypothetical entry before embedding
+
+        Returns:
+            List of VectorResult objects
+        &quot;&quot;&quot;
+        # NEW: HyDE query transformation
+        if use_hyde:
+            # Hint about dictionary types based on dict_ids filter
+            if dict_ids:
+                dict_hints = {
+                    'hantec': 'Je to brněnský slang (hantec).',
+                    'cja': 'Je to nářeční/dialektální výraz z češtiny.',
+                    'sncj': 'Je to nářeční výraz se zeměpisnou distribucí.',
+                    'ssjc': 'Je to výraz ze spisovné češtiny.',
+                }
+                context = ' '.join(dict_hints.get(d, '') for d in dict_ids if d in dict_hints)
+            else:
+                context = 'Může to být nářeční, slangový, nebo spisovný výraz.'
+
+            query_to_embed = _generate_hypothetical_entry(query, context)
+            print(f&quot;[HyDE] Original: {query}&quot;)
+            print(f&quot;[HyDE] Synthetic: {query_to_embed[:100]}...&quot;)
+        else:
+            query_to_embed = query
+
+        # Rest of search logic unchanged
+        query_embedding = self._model.encode([query_to_embed])[0].tolist()
+
+        # ... existing search code ...
+</code></pre>
+<p><strong>Integration point</strong>: Modify VSEARCH dispatcher in <code>app.py</code> and <code>scripts/test_prompt.py</code></p>
+<pre><code class="language-python"># In app.py and test_prompt.py, in _execute_tool_calls()
+
+if tool_name == &quot;vsearch&quot;:
+    query = call.arguments[&quot;query&quot;]
+    dict_id = call.arguments.get(&quot;dict_id&quot;)
+
+    from dicts.vector_db import VectorIndex
+    vi = VectorIndex()
+
+    # NEW: enable HyDE by default
+    vresults = vi.search(
+        query, 
+        limit=20,  # Get more candidates before reranking
+        dict_ids=[dict_id] if dict_id else None,
+        use_hyde=True  # &lt;-- NEW
+    )
+</code></pre>
+<p><strong>Testing</strong>:<br />
+1. <strong>Q14</strong> (bird sounds): "Jaká jsou citoslovce pro ptačí hlasy?"<br />
+   - Current: VSEARCH fails (vocabulary gap)<br />
+   - HyDE: generates "citoslovce: zvuky používané pro ptáky, např. volání na slepice..."<br />
+   - Expected: finds "volání na kachny", "volání na slepice", "volání na husy"</p>
+<ol>
+<li><strong>Q15</strong> (Brno girl): "Jak se říká holce na Brněnsku?"</li>
+<li>Current: VSEARCH misses "koc"</li>
+<li>HyDE: generates "slangový výraz pro děvče v Brně, hantec..."</li>
+<li>
+<p>Expected: finds "koc ~ děvče", "babáč ~ holka, žena"</p>
+</li>
+<li>
+<p><strong>Q17</strong> (bouda variants): "Jaké jsou varianty slova bouda?"</p>
+</li>
+<li>Current: VSEARCH returns noisy results</li>
+<li>HyDE: generates "bouda: nářeční varianty zahrnují búda, bóda..."</li>
+<li>Expected: finds ČJA entry with all variants</li>
+</ol>
+<p><strong>Metrics</strong>:<br />
+- VSEARCH recall on vocabulary-gap queries (Q14/Q15/Q17)<br />
+- HyDE generation quality (manual review of 20 synthetic entries)<br />
+- Latency impact (measure P50/P90 before/after)</p>
+<p><strong>Estimated effort</strong>: 1 day (implementation + testing on 5 queries)</p>
+<p><strong>Latency impact</strong>: +200-500ms per VSEARCH (one Haiku completion)</p>
+<hr />
+<h2 id="3-query-rewriting-multi-query-priority-high">3. Query Rewriting / Multi-Query (Priority: 🔥 High)</h2>
+<p><strong>Target problem</strong>: FTS recall failures — query uses words not in entry text</p>
+<p><strong>Research</strong>: Production RAG analysis (30-45% precision improvement)</p>
+<h3 id="implementation-approach_2">Implementation approach</h3>
+<p>Rewrite user query into 3-5 alternative phrasings, search each in parallel, merge results with deduplication.</p>
+<p><strong>Example</strong>:</p>
+<pre><code>Query: &quot;frazémy o pití alkoholu&quot;
+↓
+Rewrites:
+1. &quot;frazémy pivo alkohol&quot; (keyword extraction)
+2. &quot;idiomy o chlastání&quot; (synonym substitution)
+3. &quot;rčení spojená s pitím&quot; (formal paraphrase)
+↓
+FTSEARCH each variant → union results
+↓
+Deduplicate by headword → &quot;mít oprátky&quot;, &quot;přes žízeň&quot;, etc.
+</code></pre>
+<h3 id="changes-needed_1">Changes needed</h3>
+<h4 id="file-dict_dbpy">File: <code>dict_db.py</code></h4>
+<p><strong>New helper function</strong>:</p>
+<pre><code class="language-python">def _expand_query_for_fts(query: str, num_variants: int = 3) -&gt; list[str]:
+    &quot;&quot;&quot;
+    Generate query variants for multi-query FTS retrieval.
+
+    Args:
+        query: Original user query
+        num_variants: Number of alternative phrasings (default: 3)
+
+    Returns:
+        List of query variants including the original
+    &quot;&quot;&quot;
+    from providers import complete
+
+    prompt = f&quot;&quot;&quot;Přeformuluj tento dotaz {num_variants} různými způsoby pro fulltextové vyhledávání:
+
+Původní dotaz: &quot;{query}&quot;
+
+Požadavky:
+1. Použij synonyma (pivo → chlast, holka → děvče)
+2. Zkus formální i hovorovou verzi
+3. Extrahuj klíčová slova
+4. Změň slovosled
+
+Vrať pouze seznam {num_variants} variant, každou na samostatném řádku, BEZ číslování.&quot;&quot;&quot;
+
+    try:
+        rewrites_text = complete(prompt, model=&quot;claude-haiku-4-5&quot;, max_tokens=150)
+        variants = [v.strip() for v in rewrites_text.strip().split('\n') if v.strip()]
+        # Ensure we got at least some variants
+        if not variants:
+            return [query]
+        return [query] + variants[:num_variants]
+    except Exception as e:
+        print(f&quot;Query expansion failed: {e}&quot;, file=sys.stderr)
+        return [query]  # Fallback to original
+
+
+def _merge_fts_results(results_lists: list[list[dict]], limit: int) -&gt; list[dict]:
+    &quot;&quot;&quot;
+    Merge FTS results from multiple query variants.
+
+    Deduplicates by headword, keeps highest rank from any variant.
+
+    Args:
+        results_lists: List of result lists from different query variants
+        limit: Max results to return
+
+    Returns:
+        Merged and deduplicated results
+    &quot;&quot;&quot;
+    # Reciprocal rank fusion: score = sum(1 / (rank + 60))
+    # Constants from RRF paper: k=60 is a good default
+    seen = {}  # headword -&gt; (best_score, result_dict)
+
+    for results in results_lists:
+        for rank, result in enumerate(results):
+            headword = (
+                result.get('headword') or 
+                result.get('heslove_slovo') or 
+                result.get('heslo') or 
+                result.get('cached_head') or 
+                ''
+            )
+            if not headword:
+                continue
+
+            score = 1.0 / (rank + 60)
+
+            if headword not in seen or score &gt; seen[headword][0]:
+                seen[headword] = (score, result)
+
+    # Sort by score descending
+    merged = sorted(seen.values(), key=lambda x: x[0], reverse=True)
+    return [result for _, result in merged[:limit]]
+</code></pre>
+<p><strong>Modified <code>fts_search()</code> function</strong>:</p>
+<pre><code class="language-python">def fts_search(
+    dictionary: str, 
+    query: str, 
+    limit: int = 20,
+    use_query_expansion: bool = True  # NEW parameter
+) -&gt; list[dict]:
+    &quot;&quot;&quot;
+    Full-text search with optional query expansion.
+
+    Args:
+        dictionary: Dict ID (e.g., 'cja', 'sncj')
+        query: Search query
+        limit: Max results
+        use_query_expansion: If True, generate query variants and merge results
+
+    Returns:
+        List of entry dicts with 'snippet' field
+    &quot;&quot;&quot;
+    conn = get_connection(dictionary)
+
+    if not use_query_expansion:
+        # Original single-query path
+        return _fts_search_single(conn, query, limit)
+
+    # NEW: Multi-query path
+    query_variants = _expand_query_for_fts(query, num_variants=3)
+    print(f&quot;[FTS Multi-Query] Original: {query}&quot;)
+    print(f&quot;[FTS Multi-Query] Variants: {query_variants[1:]}&quot;)
+
+    # Search each variant
+    all_results = []
+    per_variant_limit = max(10, limit // len(query_variants))
+
+    for variant in query_variants:
+        try:
+            results = _fts_search_single(conn, variant, per_variant_limit)
+            all_results.append(results)
+        except Exception as e:
+            print(f&quot;FTS variant '{variant}' failed: {e}&quot;, file=sys.stderr)
+            all_results.append([])
+
+    # Merge with reciprocal rank fusion
+    merged = _merge_fts_results(all_results, limit)
+    print(f&quot;[FTS Multi-Query] Merged: {len(merged)} results from {sum(len(r) for r in all_results)} total&quot;)
+
+    return merged
+
+
+def _fts_search_single(conn, query: str, limit: int) -&gt; list[dict]:
+    &quot;&quot;&quot;Original FTS search logic (single query).&quot;&quot;&quot;
+    # ... existing implementation, extracted from fts_search() ...
+</code></pre>
+<p><strong>Integration</strong>: Enable by default in tool dispatcher</p>
+<pre><code class="language-python"># In app.py and scripts/test_prompt.py
+
+if tool_name == &quot;ftsearch&quot;:
+    query = call.arguments[&quot;query&quot;]
+    dict_id = call.arguments.get(&quot;dict_id&quot;)
+
+    results = dict_db.fts_search(
+        dict_id or &quot;cja&quot;,  # fallback to cja if not specified
+        query,
+        limit=20,
+        use_query_expansion=True  # &lt;-- NEW: enable multi-query by default
+    )
+</code></pre>
+<p><strong>Testing</strong>:<br />
+1. <strong>Q9</strong> (frazémy o alkoholu): "Jaké jsou frazémy týkající se pití alkoholu?"<br />
+   - Current: FTSEARCH misses SNČJ phrasemes<br />
+   - Rewrites: "frazémy pivo alkohol", "idiomy chlast", "rčení pití"<br />
+   - Expected: finds SNČJ entries with <code>strings_f</code> (phrasemes)</p>
+<ol>
+<li><strong>Q8</strong> (horse commands): "Jaká jsou citoslovce a povely pro koně?"</li>
+<li>Current: misses some ČJA compound headwords</li>
+<li>Rewrites: "povely koně", "citoslovce kůň", "volání na koně"</li>
+<li>Expected: finds <code>(kůň) hý</code>, <code>(kůň) stůj</code>, etc.</li>
+</ol>
+<p><strong>Metrics</strong>:<br />
+- FTS recall on keyword-sparse queries<br />
+- Query variant quality (manual review)<br />
+- Latency impact (should be &lt;500ms total for 3-4 variants)</p>
+<p><strong>Estimated effort</strong>: 1 day (implementation + testing)</p>
+<p><strong>Latency impact</strong>: +200-500ms per FTSEARCH (one Haiku completion for variants)</p>
+<hr />
+<h2 id="implementation-timeline">Implementation Timeline</h2>
+<h3 id="week-1-sequential-rollout-eval">Week 1: Sequential rollout + eval</h3>
+<p><strong>Day 1-2</strong>: Self-RAG critique<br />
+- Edit <code>prompts/system_dict.md</code><br />
+- Test on Q15, Q17 (citation hallucination cases)<br />
+- Run full 17-query eval<br />
+- Measure citation verification rate before/after</p>
+<p><strong>Day 3-4</strong>: HyDE embeddings<br />
+- Implement <code>_generate_hypothetical_entry()</code> in <code>dicts/vector_db.py</code><br />
+- Modify <code>VectorIndex.search()</code> to accept <code>use_hyde</code> flag<br />
+- Update tool dispatcher in <code>app.py</code> and <code>test_prompt.py</code><br />
+- Test on Q14, Q15, Q17<br />
+- Run full 17-query eval<br />
+- Measure VSEARCH recall improvement</p>
+<p><strong>Day 5</strong>: Query rewriting<br />
+- Implement <code>_expand_query_for_fts()</code> and <code>_merge_fts_results()</code> in <code>dict_db.py</code><br />
+- Modify <code>fts_search()</code> to accept <code>use_query_expansion</code> flag<br />
+- Update tool dispatcher<br />
+- Test on Q8, Q9<br />
+- Run full 17-query eval<br />
+- Measure FTS precision improvement</p>
+<p><strong>Weekend</strong>: Analysis &amp; reporting<br />
+- Compare all 4 eval runs (baseline, +Self-RAG, +HyDE, +Query-Rewriting)<br />
+- Write up results in <code>evals/2026-07-XX-phase1-improvements/report.md</code><br />
+- Decide: proceed to Phase 2 (reranking) or iterate on Phase 1?</p>
+<hr />
+<h2 id="success-criteria">Success Criteria</h2>
+<p><strong>Baseline</strong> (current PN22):<br />
+- 13/17 queries passing (76%)<br />
+- Citation verification rate: ~85%<br />
+- Zero-result rates: Q8=15%, Q9=18%</p>
+<p><strong>Phase 1 target</strong>:<br />
+- <strong>15/17 queries passing</strong> (88% → +12 percentage points)<br />
+- <strong>Citation verification rate &gt;90%</strong> (↑5 percentage points)<br />
+- <strong>Zero-result rates: &lt;10%</strong> across all tools<br />
+- <strong>Latency P90 &lt;15s</strong> (acceptable given quality gains)<br />
+- <strong>Cost increase &lt;30%</strong> (multi-query adds LLM calls)</p>
+<p><strong>If targets met</strong>: Proceed to Phase 2 (BGE reranker)</p>
+<p><strong>If targets missed</strong>: Debug and iterate:<br />
+- Review failed queries: which technique didn't help?<br />
+- Tune parameters: HyDE prompt, query variant count, RRF weights<br />
+- Consider alternative approaches from research doc</p>
+<hr />
+<h2 id="rollback-plan">Rollback Plan</h2>
+<p>All changes are <strong>additive with feature flags</strong>:</p>
+<pre><code class="language-python"># Easy rollback via config or env var
+USE_SELF_RAG_CRITIQUE = True  # prompt-only, no code rollback needed
+USE_HYDE_EMBEDDINGS = True
+USE_QUERY_EXPANSION = True
+
+# In code:
+vresults = vi.search(query, use_hyde=USE_HYDE_EMBEDDINGS)
+fts_results = fts_search(query, use_query_expansion=USE_QUERY_EXPANSION)
+</code></pre>
+<p>If a technique causes regressions:<br />
+1. Set feature flag to <code>False</code><br />
+2. Re-run eval to confirm rollback<br />
+3. Debug issue before re-enabling</p>
+<hr />
+<h2 id="monitoring-logging">Monitoring &amp; Logging</h2>
+<p>Add logging for new code paths:</p>
+<pre><code class="language-python">import logging
+logger = logging.getLogger(__name__)
+
+# In HyDE
+logger.info(f&quot;[HyDE] Query: {query[:50]}... → Synthetic: {hyde_entry[:50]}...&quot;)
+
+# In query expansion
+logger.info(f&quot;[QueryExpansion] Original: {query} → Variants: {variants}&quot;)
+
+# In result merging
+logger.info(f&quot;[RRF] Merged {len(merged)} from {total_before} candidates&quot;)
+</code></pre>
+<p>Add metrics collection:</p>
+<pre><code class="language-python"># In messages table (or new metrics table)
+INSERT INTO query_metrics (conv_id, query, technique, latency_ms, result_count)
+VALUES (?, ?, 'hyde', ?, ?);
+</code></pre>
+<hr />
+<h2 id="next-steps-after-phase-1">Next Steps After Phase 1</h2>
+<p><strong>If 15/17 achieved</strong>: Proceed to Phase 2 (BGE reranker)</p>
+<p><strong>If 16/17 achieved</strong>: Declare victory, move to production hardening</p>
+<p><strong>If &lt;15/17</strong>: Analyze gaps:<br />
+- Which queries still fail? Why?<br />
+- Do we need RAPTOR (multi-hop clustering)?<br />
+- Do we need LaBSE (better Czech embeddings)?<br />
+- Do we need domain fine-tuning?</p>
+<p>Refer back to <code>docs/rag-quality-research-2024.md</code> for advanced techniques.</p>
+<hr />
+<p><strong>Document version</strong>: 1.0<br />
+<strong>Last updated</strong>: 2026-06-29<br />
+<strong>Ready for implementation</strong>: Yes (all design decisions made, code snippets ready)</p>
+
+<hr>
+<footer style="text-align: center; color: #57606a; font-size: 12px; margin-top: 48px;">
+  <p>Generated 2026-06-29 | <a href="https://martinpovolny.github.io">Martin Povolný</a></p>
+</footer>
+</body>
+</html>

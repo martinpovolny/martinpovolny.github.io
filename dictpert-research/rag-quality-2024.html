@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RAG Quality Research 2024 — Dictpert</title>
+<style>
+  body { 
+    font-family: -apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+    font-size: 14px; 
+    line-height: 1.6; 
+    color: #24292e; 
+    max-width: 960px; 
+    margin: 0 auto; 
+    padding: 40px 24px;
+    background: #fff;
+  }
+  h1 { 
+    font-size: 28px; 
+    border-bottom: 1px solid #e1e4e8; 
+    padding-bottom: 12px;
+    margin-top: 24px;
+  }
+  h2 { 
+    font-size: 20px; 
+    border-bottom: 1px solid #f0f0f0; 
+    padding-bottom: 6px; 
+    margin-top: 32px;
+  }
+  h3 { 
+    font-size: 16px; 
+    margin-top: 24px;
+  }
+  h4 { 
+    font-size: 14px; 
+    margin-top: 20px;
+    font-weight: 600;
+  }
+  table { 
+    border-collapse: collapse; 
+    width: 100%; 
+    font-size: 13px; 
+    margin: 16px 0;
+  }
+  th { 
+    text-align: left; 
+    background: #f6f8fa; 
+    border: 1px solid #e1e4e8; 
+    padding: 6px 10px; 
+    font-size: 12px;
+    font-weight: 600;
+  }
+  td { 
+    border: 1px solid #e1e4e8; 
+    padding: 6px 10px; 
+    vertical-align: top;
+  }
+  code { 
+    font-family: "SFMono-Regular",Consolas,"Liberation Mono",Menlo,monospace; 
+    font-size: 12px;
+    background: #f6f8fa; 
+    padding: 2px 6px; 
+    border-radius: 3px;
+  }
+  pre { 
+    background: #f6f8fa; 
+    padding: 16px; 
+    border-radius: 6px; 
+    font-size: 12px; 
+    line-height: 1.5;
+    overflow-x: auto;
+  }
+  pre code { 
+    background: none; 
+    padding: 0;
+  }
+  blockquote { 
+    border-left: 3px solid #0969da; 
+    margin: 16px 0; 
+    padding-left: 16px; 
+    color: #57606a;
+  }
+  hr { 
+    border: none; 
+    border-top: 1px solid #e1e4e8; 
+    margin: 32px 0;
+  }
+  a {
+    color: #0969da;
+    text-decoration: none;
+  }
+  a:hover {
+    text-decoration: underline;
+  }
+  ul, ol {
+    padding-left: 24px;
+    margin: 8px 0;
+  }
+  li {
+    margin: 4px 0;
+  }
+  .header {
+    background: #f6f8fa;
+    border: 1px solid #e1e4e8;
+    border-radius: 6px;
+    padding: 16px;
+    margin-bottom: 24px;
+  }
+  .header p {
+    margin: 4px 0;
+  }
+  .priority-high {
+    color: #cf222e;
+    font-weight: 600;
+  }
+  .priority-medium {
+    color: #fb8500;
+    font-weight: 600;
+  }
+</style>
+</head>
+<body>
+<div class="header">
+  <p><strong>Project:</strong> <a href="https://dictpert.hmpf.cz">Dictpert — Czech Dialectology AI Assistant</a></p>
+  <p><strong>Document:</strong> RAG Quality Improvement Research Review (2024-2026)</p>
+  <p><strong>Date:</strong> 2026-06-29</p>
+  <p><strong>Links:</strong> 
+    <a href="../dictpert-evals/">Evaluation Reports</a> | 
+    <a href="implementation-design.html">Implementation Design</a> |
+    <a href="https://github.com/yourusername/dictpert">GitHub</a>
+  </p>
+</div>
+
+<h1 id="rag-quality-improvement-research-review-recommendations-for-dictpert">RAG Quality Improvement: Research Review &amp; Recommendations for Dictpert</h1>
+<p><strong>Date</strong>: 2026-06-29<br />
+<strong>Status</strong>: Research analysis complete, implementation pending</p>
+<h2 id="executive-summary">Executive Summary</h2>
+<p>Analysis of 2024-2026 RAG research literature reveals three high-impact, low-effort improvements for dictpert:</p>
+<ol>
+<li><strong>Self-RAG critique</strong> (prompt-only) — fixes citation hallucination</li>
+<li><strong>HyDE embeddings</strong> (1 day) — fixes vocabulary mismatch (Q14/Q15)</li>
+<li><strong>Query rewriting</strong> (1 day) — +30-45% FTS precision</li>
+</ol>
+<p>All three target <strong>query-document vocabulary gap</strong> and <strong>generation fidelity</strong>, not infrastructure. Expected combined impact: 40-60% reduction in failure modes with &lt;2 weeks implementation.</p>
+<hr />
+<h2 id="core-challenge-analysis">Core Challenge Analysis</h2>
+<p>Dictpert has a <strong>specialized domain</strong> (Czech dialectology) with:</p>
+<ul>
+<li><strong>Vocabulary mismatch</strong>: Users ask "jak se říká holce" but entries say "děvče", "koc", "frajla"</li>
+<li><strong>Geographic precision</strong>: "na Brněnsku" → need filtering by okres/kraj (partially solved via <code>geofilter</code> tool)</li>
+<li><strong>Multi-hop reasoning</strong>: Finding all animal sound interjections requires category search → headword lookup</li>
+<li><strong>Citation hallucination</strong>: Model cites <code>[[DICT:word]]</code> that never appeared in results (Issue C in <code>known-issues.md</code>)</li>
+</ul>
+<p><strong>Current state</strong>: 13/17 eval queries passing (0 ❌), but 4 ⚠ remain due to vocabulary gaps and incomplete retrieval.</p>
+<hr />
+<h2 id="research-findings-2024-2026">Research Findings (2024-2026)</h2>
+<h3 id="1-self-rag-self-reflective-retrieval-augmented-generation">1. Self-RAG: Self-Reflective Retrieval-Augmented Generation ⭐⭐⭐</h3>
+<p><strong>Paper</strong>: Asai et al., ICLR 2024<br />
+<strong>arXiv</strong>: <a href="https://arxiv.org/abs/2310.11511">2310.11511</a><br />
+<strong>Authors</strong>: Akari Asai, Zeqiu Wu, Yizhong Wang, Avirup Sil, Hannaneh Hajishirzi</p>
+<p><strong>Core concept</strong>: Train LLM to emit reflection tokens that critique its own retrieval and generation:<br />
+- After retrieval: "Is this document relevant to my query?"<br />
+- After generation: "Is my answer supported by the retrieved evidence?"</p>
+<p><strong>Architecture</strong>:<br />
+1. Retrieval decision token (on-demand retrieval)<br />
+2. Concurrent multi-passage processing<br />
+3. Critique tokens for self-evaluation<br />
+4. Best output selection</p>
+<p><strong>Performance</strong>: Self-RAG (7B/13B) outperforms ChatGPT and retrieval-augmented Llama2 on open-domain QA, reasoning, and fact verification.</p>
+<p><strong>Dictpert application</strong>:</p>
+<pre><code>After each LOOKUP/FTSEARCH/VSEARCH result:
+[CRITIQUE: Podporuje tento záznam heslo, které chci citovat? Odpovídá na otázku?]
+→ Model self-evaluates relevance
+→ If NO: try alternative tool or term
+→ If YES: proceed with citation
+</code></pre>
+<p><strong>Impact</strong>: Directly targets citation hallucination (Issue C). Expected: 50% reduction in unverified <code>[[DICT:word]]</code> citations.</p>
+<p><strong>Effort</strong>: <strong>Low</strong> — prompt-only, add critique step to <code>prompts/system_dict.md</code></p>
+<p><strong>Implementation path</strong>: Add critique instruction after tool result injection in prompt template.</p>
+<hr />
+<h3 id="2-hyde-hypothetical-document-embeddings">2. HyDE: Hypothetical Document Embeddings ⭐⭐⭐</h3>
+<p><strong>Paper</strong>: Gao et al., ACL 2023<br />
+<strong>arXiv</strong>: <a href="https://arxiv.org/abs/2212.10496">2212.10496</a><br />
+<strong>Authors</strong>: Luyu Gao, Xueguang Ma, Jimmy Lin, Jamie Callan</p>
+<p><strong>Core concept</strong>: Instead of embedding the query directly, generate a hypothetical document that would answer the query, then embed THAT. Bridges the semantic gap between short queries and detailed documents.</p>
+<p><strong>How it works</strong>:<br />
+1. User query: "Jak se říká holce na Brněnsku?"<br />
+2. LLM generates fake entry: "koc: brněnský slangový výraz pro děvče, holku. Používá se v Brně..."<br />
+3. Embed the fake entry (not the query)<br />
+4. Vector search finds real "koc ~ děvče" entry via semantic similarity</p>
+<p><strong>Performance</strong>: Significantly outperforms Contriever (state-of-the-art unsupervised dense retriever); comparable to fine-tuned retrievers across web search, QA, fact verification, and multiple languages.</p>
+<p><strong>Dictpert application</strong>:</p>
+<pre><code class="language-python"># In dicts/vector_db.py
+def search(query, limit, dict_ids, use_hyde=True):
+    if use_hyde:
+        # Generate hypothetical entry
+        hyde_prompt = f&quot;Napiš krátké slovníkové heslo (2-3 věty), které by odpovídalo na dotaz: {query}&quot;
+        hyde_doc = providers.complete(hyde_prompt, model=&quot;claude-haiku-4-5&quot;)
+        query_to_embed = hyde_doc
+    else:
+        query_to_embed = query
+
+    # Embed and search as normal
+    ...
+</code></pre>
+<p><strong>Impact</strong>: Fixes Q14 (bird sounds), Q15 (Brno girl), Q17 (bouda variants) — all vocabulary-mismatch failures.</p>
+<p><strong>Effort</strong>: <strong>Low</strong> (1 day) — add <code>providers.complete()</code> call before embedding in <code>dicts/vector_db.py</code></p>
+<p><strong>Latency</strong>: +200-500ms per VSEARCH (one completion call)</p>
+<hr />
+<h3 id="3-query-rewriting-multi-query-retrieval">3. Query Rewriting / Multi-Query Retrieval ⭐⭐⭐</h3>
+<p><strong>Research</strong>: Production RAG analysis (2024) — 35% of retrieval failures originate from poor query formulation, not infrastructure.</p>
+<p><strong>Key finding</strong>: Teams using query rewriting report <strong>30-45% improvements in retrieval precision</strong> without changing vector search code.</p>
+<p><strong>Core concept</strong>: Rewrite user query into 3-5 alternative phrasings, retrieve in parallel, merge results (reciprocal rank fusion).</p>
+<p><strong>Dictpert application</strong>:</p>
+<pre><code class="language-python"># In dict_db.py
+def _expand_query(query: str) -&gt; list[str]:
+    &quot;&quot;&quot;Rewrite query into 3-5 alternative phrasings for FTS/VSEARCH.&quot;&quot;&quot;
+    prompt = f&quot;&quot;&quot;Přeformuluj tento dotaz 3 různými způsoby (synonyma, přeházená slova, formální vs. hovorový):
+    Dotaz: {query}
+
+    Vrať pouze seznam 3 variant, každou na samostatném řádku.&quot;&quot;&quot;
+
+    rewrites = providers.complete(prompt, model=&quot;claude-haiku-4-5&quot;)
+    variants = [query] + rewrites.strip().split('\n')
+    return variants[:4]  # original + 3 rewrites
+
+def fts_search(dict_id, query, limit):
+    variants = _expand_query(query)
+    all_results = []
+    for variant in variants:
+        results = _fts_search_single(dict_id, variant, limit // len(variants))
+        all_results.extend(results)
+
+    # Deduplicate by headword, merge scores
+    return _merge_results(all_results, limit)
+</code></pre>
+<p><strong>Example</strong>:</p>
+<pre><code>Query: &quot;Jak se říká holce na Brněnsku?&quot;
+↓
+Rewrites:
+1. &quot;brněnský výraz pro dívku&quot;
+2. &quot;hantec slovo holka&quot;
+3. &quot;děvče Brno slang&quot;
+↓
+FTSEARCH all 4 → union results → &quot;babáč&quot;, &quot;koc&quot;, &quot;frajla&quot;
+</code></pre>
+<p><strong>Impact</strong>: +30-45% retrieval precision (production benchmarks)</p>
+<p><strong>Effort</strong>: <strong>Low</strong> (1 day) — add <code>_expand_query()</code> helper, modify <code>fts_search()</code> and <code>VectorIndex.search()</code></p>
+<p><strong>Latency</strong>: +200-500ms per FTS/VSEARCH (one completion call for rewrites)</p>
+<hr />
+<h3 id="4-cross-encoder-reranking">4. Cross-Encoder Reranking ⭐⭐⭐</h3>
+<p><strong>Models</strong>: BGE-reranker-v2-m3, Cohere Rerank, MiniLM-L6-v2</p>
+<p><strong>Research</strong>: +5 to +15 NDCG@10 improvement across MTEB/BEIR benchmarks; up to 48% retrieval quality improvement (Databricks); typical production RAG sees +5-15 NDCG@10 for &lt;200ms latency.</p>
+<p><strong>Core concept</strong>: After bi-encoder retrieves top-20 candidates, cross-encoder scores each (query, document) pair with full attention. More expensive but more accurate than embedding distance.</p>
+<p><strong>How it works</strong>:</p>
+<pre><code>Bi-encoder (fast, cheap):
+  embed(query) vs. embed(doc) → cosine similarity
+  Problem: query and doc tokens never interact
+
+Cross-encoder (slow, accurate):
+  encode([query, doc]) → relevance score
+  Benefit: full cross-attention between query and document
+</code></pre>
+<p><strong>Dictpert application</strong>:</p>
+<pre><code class="language-python"># In dicts/vector_db.py
+from sentence_transformers import CrossEncoder
+
+class VectorIndex:
+    def __init__(self):
+        # ... existing code ...
+        self._reranker = CrossEncoder('BAAI/bge-reranker-v2-m3')
+
+    def search(self, query, limit, dict_ids, rerank=True):
+        # Get top-20 from vector search
+        candidates = self._search_raw(query, limit * 4, dict_ids)
+
+        if not rerank or len(candidates) &lt;= limit:
+            return candidates[:limit]
+
+        # Rerank with cross-encoder
+        pairs = [(query, self._format_for_rerank(c)) for c in candidates]
+        scores = self._reranker.predict(pairs)
+
+        # Sort by cross-encoder score
+        ranked = sorted(zip(candidates, scores), key=lambda x: x[1], reverse=True)
+        return [c for c, _ in ranked[:limit]]
+</code></pre>
+<p><strong>Performance</strong>:<br />
+- <strong>BGE v2-m3</strong> (568M params): 80-200ms for 100 docs @ 512 tokens (GPU)<br />
+- <strong>MiniLM-L6</strong> (22M params): 50-80ms for 100 docs @ 256 tokens (GPU)</p>
+<p><strong>Impact</strong>: Reduces false VSEARCH hits, improves precision on vocabulary-mismatch queries</p>
+<p><strong>Effort</strong>: <strong>Medium</strong> (2 days) — add reranker model, modify <code>search()</code> method, GPU optimization</p>
+<p><strong>Trade-off</strong>: Latency +80-200ms vs. +10-15 NDCG@10</p>
+<hr />
+<h3 id="5-raptor-recursive-abstractive-processing-for-tree-organized-retrieval">5. RAPTOR: Recursive Abstractive Processing for Tree-Organized Retrieval ⭐⭐</h3>
+<p><strong>Paper</strong>: Sarthi et al., ICLR 2024<br />
+<strong>arXiv</strong>: <a href="https://arxiv.org/abs/2401.18059">2401.18059</a></p>
+<p><strong>Core concept</strong>: Recursively cluster entries by semantic similarity, generate summaries of each cluster, build a tree structure. At retrieval time, search both individual entries AND cluster summaries.</p>
+<p><strong>How it works</strong>:</p>
+<pre><code>Level 0 (leaves): Individual dictionary entries
+    ├── hý (citoslovce pro koně)
+    ├── stůj (povel pro koně)
+    ├── jeď (povel pro koně)
+    └── couvni (povel pro koně)
+         ↓ cluster by similarity
+Level 1 (summaries): Cluster summaries
+    └── &quot;Skupina povelů a citoslovcí pro koně v ČJA...&quot;
+         ↓
+VSEARCH finds summary → LLM sees cluster context → batch LOOKUP
+</code></pre>
+<p><strong>Performance</strong>: +20% on QuALITY benchmark (multi-hop questions); sets SOTA on NarrativeQA (METEOR metric) when paired with UnifiedQA.</p>
+<p><strong>Dictpert application</strong>:</p>
+<pre><code class="language-python"># Cluster ČJA animal-sound entries
+clusters = {
+    'koně_povely': ['hý', 'stůj', 'jeď', 'couvni', 'nalevo', 'napravo'],
+    'krávy_zvuky': ['bučí', 'mučí', 'řve'],
+    'ptáci_volání': ['volání na kachny', 'volání na slepice', 'volání na husy'],
+}
+
+# Generate summaries
+for cluster_name, headwords in clusters.items():
+    entries = [lookup_word('cja', hw) for hw in headwords]
+    summary = generate_cluster_summary(entries)
+    # Index summary alongside individual entries
+    chroma.add(f&quot;cluster:{cluster_name}&quot;, summary)
+</code></pre>
+<p><strong>Impact</strong>: Improves multi-hop queries (Q8, Q14) by surfacing category-level context</p>
+<p><strong>Effort</strong>: <strong>High</strong> (1-2 weeks) — cluster all entries, generate summaries, rebuild vector index with hierarchical structure</p>
+<p><strong>When to implement</strong>: After HyDE + reranking prove the vector-gap hypothesis; only if multi-hop failures persist.</p>
+<hr />
+<h3 id="6-crag-corrective-retrieval-augmented-generation">6. CRAG: Corrective Retrieval-Augmented Generation ⭐⭐</h3>
+<p><strong>Paper</strong>: Yan et al., 2024<br />
+<strong>arXiv</strong>: <a href="https://arxiv.org/abs/2401.15884">2401.15884</a></p>
+<p><strong>Core concept</strong>: Evaluate retrieval quality with a T5-based scorer, apply corrective actions based on confidence:<br />
+- <strong>Correct</strong> (high confidence): Refine retrieved docs (decompose-then-recompose; remove irrelevant parts)<br />
+- <strong>Incorrect</strong> (low confidence): Discard retrieval, trigger web search<br />
+- <strong>Ambiguous</strong> (medium confidence): Combine refined retrieval + web search</p>
+<p><strong>Dictpert application</strong>:</p>
+<pre><code class="language-python">def _evaluate_retrieval(query, results):
+    if not results:
+        return &quot;incorrect&quot;
+
+    # Score relevance (could use cross-encoder or LLM judge)
+    scores = [_score_relevance(query, r) for r in results]
+    avg_score = sum(scores) / len(scores)
+
+    if avg_score &gt; 0.8:
+        return &quot;correct&quot;
+    elif avg_score &lt; 0.3:
+        return &quot;incorrect&quot;
+    else:
+        return &quot;ambiguous&quot;
+
+# In dict-mode loop
+fts_results = fts_search(query, dict_id)
+quality = _evaluate_retrieval(query, fts_results)
+
+if quality == &quot;incorrect&quot;:
+    # Fallback: try VSEARCH
+    vsearch_results = vector_search(query, dict_id)
+elif quality == &quot;ambiguous&quot;:
+    # Combine FTS + VSEARCH
+    combined = merge(fts_results, vsearch_results)
+</code></pre>
+<p><strong>Challenge</strong>: Web search fallback doesn't apply (no web corpus for Czech dialects)</p>
+<p><strong>Effort</strong>: <strong>Medium</strong> — need retrieval evaluator (T5 scorer or cross-encoder)</p>
+<p><strong>When to implement</strong>: If FTSEARCH → VSEARCH fallback chain still has gaps</p>
+<hr />
+<h3 id="7-domain-specific-embedding-fine-tuning">7. Domain-Specific Embedding Fine-Tuning ⭐</h3>
+<p><strong>Research</strong>: <a href="https://iwaponline.com/wst/article/92/9/1328/109925/">Domain-specific embeddings for hydrology</a> — fine-tuning generic embeddings on specialized corpora improves semantic retrieval in technical domains.</p>
+<p><strong>Core concept</strong>: Current embedding model (<code>paraphrase-multilingual-mpnet-base-v2</code>) is trained on general-purpose text. Czech dialects, historical forms, and geographic place names may be out-of-distribution.</p>
+<p><strong>Dictpert application</strong>:</p>
+<pre><code class="language-python"># Fine-tune sentence-transformers on Czech dialectology corpus
+from sentence_transformers import SentenceTransformer, InputExample, losses
+
+model = SentenceTransformer('paraphrase-multilingual-mpnet-base-v2')
+
+# Training data: (query, positive_entry, negative_entry) triplets
+train_examples = [
+    InputExample(texts=['jak se říká holce', 'koc ~ děvče', 'stůl ~ nábytek']),
+    InputExample(texts=['citoslovce pro koně', 'hý ~ povel pro koně', 'auto ~ vozidlo']),
+    # ... 1000+ examples from eval queries + manual annotations
+]
+
+train_dataloader = DataLoader(train_examples, shuffle=True, batch_size=16)
+train_loss = losses.TripletLoss(model)
+
+model.fit(train_objectives=[(train_dataloader, train_loss)], epochs=4)
+</code></pre>
+<p><strong>Alternative</strong>: Benchmark <a href="https://huggingface.co/sentence-transformers/LaBSE">LaBSE</a> (Language-agnostic BERT Sentence Embedding) — multilingual model with 109 languages, may handle Czech dialects better than mpnet.</p>
+<p><strong>Impact</strong>: Better semantic matching for dialect-specific terms, reduced OOV failures</p>
+<p><strong>Effort</strong>: <strong>Very High</strong> (weeks) — need labeled training data (1000+ query/entry pairs), GPU cluster, validation set</p>
+<p><strong>When to implement</strong>: Only if HyDE + query rewriting + reranking still show semantic gaps</p>
+<hr />
+<h2 id="implementation-priority-matrix">Implementation Priority Matrix</h2>
+<table>
+<thead>
+<tr>
+<th>Technique</th>
+<th>Effort</th>
+<th>Impact</th>
+<th>Addresses</th>
+<th>Order</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Self-RAG critique</strong></td>
+<td>Low (prompt)</td>
+<td>High</td>
+<td>Citation hallucination (Issue C)</td>
+<td>🔥 <strong>1st</strong></td>
+</tr>
+<tr>
+<td><strong>HyDE embeddings</strong></td>
+<td>Low (1 day)</td>
+<td>High</td>
+<td>Vocabulary mismatch (Q14/Q15/Q17)</td>
+<td>🔥 <strong>2nd</strong></td>
+</tr>
+<tr>
+<td><strong>Query rewriting</strong></td>
+<td>Low (1 day)</td>
+<td>High</td>
+<td>FTS recall failures</td>
+<td>🔥 <strong>3rd</strong></td>
+</tr>
+<tr>
+<td><strong>BGE reranker</strong></td>
+<td>Medium (2 days)</td>
+<td>High</td>
+<td>VSEARCH precision</td>
+<td>⭐ <strong>4th</strong></td>
+</tr>
+<tr>
+<td><strong>Multi-query parallel</strong></td>
+<td>Low (1 day)</td>
+<td>Medium</td>
+<td>Coverage gaps</td>
+<td>⭐ <strong>5th</strong></td>
+</tr>
+<tr>
+<td><strong>RAPTOR clustering</strong></td>
+<td>High (1-2 weeks)</td>
+<td>Medium</td>
+<td>Multi-hop reasoning (Q8/Q14)</td>
+<td>⏳ <strong>Later</strong></td>
+</tr>
+<tr>
+<td><strong>LaBSE comparison</strong></td>
+<td>Low (1 day)</td>
+<td>Medium</td>
+<td>Czech dialect OOV</td>
+<td>⏳ <strong>Later</strong></td>
+</tr>
+<tr>
+<td><strong>CRAG fallback</strong></td>
+<td>Medium (2 days)</td>
+<td>Medium</td>
+<td>Zero-result handling</td>
+<td>⏳ <strong>Later</strong></td>
+</tr>
+<tr>
+<td><strong>Domain fine-tuning</strong></td>
+<td>Very High (weeks)</td>
+<td>High long-term</td>
+<td>All semantic gaps</td>
+<td>⏳ <strong>Much later</strong></td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="recommended-implementation-phases">Recommended Implementation Phases</h2>
+<h3 id="phase-1-quick-wins-1-week"><strong>Phase 1: Quick Wins (1 week)</strong></h3>
+<p><strong>Goal</strong>: Address 80% of current failure modes with prompt engineering + lightweight inference</p>
+<ol>
+<li><strong>Self-RAG critique</strong> (2 hours)</li>
+<li>Add critique instruction to <code>prompts/system_dict.md</code></li>
+<li>
+<p>Test on Q15/Q17 (citation hallucination cases)</p>
+</li>
+<li>
+<p><strong>HyDE for VSEARCH</strong> (1 day)</p>
+</li>
+<li>Modify <code>dicts/vector_db.py</code> to generate hypothetical entry before embedding</li>
+<li>
+<p>Test on Q14/Q15/Q17 (vocabulary-mismatch queries)</p>
+</li>
+<li>
+<p><strong>Query rewriting</strong> (1 day)</p>
+</li>
+<li>Add <code>_expand_query()</code> to <code>dict_db.py</code></li>
+<li>Modify <code>fts_search()</code> to use multi-query retrieval</li>
+<li>Test on Q8/Q9/Q14 (FTS failures)</li>
+</ol>
+<p><strong>Expected impact</strong>:<br />
+- Citation hallucination: ↓50%<br />
+- FTS recall: +30-45%<br />
+- VSEARCH vocabulary-gap queries: ↑60%<br />
+- <strong>Total</strong>: 15/17 queries passing (current: 13/17)</p>
+<p><strong>Metrics</strong>:<br />
+- Run full 17-query eval before/after<br />
+- Measure: citation verification rate, zero-result rate, answer completeness, latency P50/P90</p>
+<hr />
+<h3 id="phase-2-precision-boost-1-week"><strong>Phase 2: Precision Boost (1 week)</strong></h3>
+<p><strong>Goal</strong>: Reduce false positives in VSEARCH, improve ranking quality</p>
+<ol>
+<li><strong>BGE-reranker-v2-m3</strong> integration (2 days)</li>
+<li>Add cross-encoder reranking to <code>dicts/vector_db.py</code></li>
+<li>Benchmark latency (target: &lt;500ms total including rerank)</li>
+<li>
+<p>A/B test on Q14/Q15/Q17</p>
+</li>
+<li>
+<p><strong>Multi-query parallel retrieval</strong> (1 day)</p>
+</li>
+<li>Extend query rewriting to VSEARCH</li>
+<li>Implement reciprocal rank fusion for result merging</li>
+</ol>
+<p><strong>Expected impact</strong>:<br />
+- VSEARCH precision: +10-15 NDCG@10<br />
+- False positive rate: ↓40%<br />
+- <strong>Total</strong>: 16/17 queries passing (stretch goal)</p>
+<hr />
+<h3 id="phase-3-advanced-only-if-phase-12-gaps-remain"><strong>Phase 3: Advanced (only if Phase 1+2 gaps remain)</strong></h3>
+<ol>
+<li><strong>RAPTOR clustering</strong> (if multi-hop failures persist)</li>
+<li><strong>LaBSE embedding comparison</strong> (if Czech dialect recall still poor)</li>
+<li><strong>CRAG fallback chains</strong> (if zero-result rate &gt;10%)</li>
+</ol>
+<hr />
+<h2 id="evaluation-framework">Evaluation Framework</h2>
+<p>For each improvement:</p>
+<ol>
+<li><strong>Baseline metrics</strong> (current PN22 state):</li>
+<li>13/17 queries passing (76% success rate)</li>
+<li>Citation verification rate: ~85% (manual review)</li>
+<li>Zero-result rate: Q8=15%, Q9=18%, Q14=0%, Q16=varies</li>
+<li>
+<p>Latency P50: ~3-5s (dict mode), P90: ~8-12s</p>
+</li>
+<li>
+<p><strong>A/B test protocol</strong>:</p>
+</li>
+<li>Run full 17-query eval on both versions</li>
+<li>Measure:<ul>
+<li>Answer quality (✅ Good / ⚠ Partial / ❌ Poor)</li>
+<li>Citation verification: % of <code>[[DICT:word]]</code> backed by LOOKUP</li>
+<li>Tool efficiency: lookups per query, zero-result rate</li>
+<li>Latency: P50/P90/P99 per query</li>
+<li>Cost: total output tokens</li>
+</ul>
+</li>
+<li>
+<p>Compare side-by-side in report</p>
+</li>
+<li>
+<p><strong>Success criteria</strong>:</p>
+</li>
+<li>Phase 1: 15/17 passing (88%), citation rate &gt;90%, P90 latency &lt;15s</li>
+<li>Phase 2: 16/17 passing (94%), citation rate &gt;95%, P90 latency &lt;20s</li>
+</ol>
+<hr />
+<h2 id="key-insight">Key Insight</h2>
+<p><strong>The core problem is NOT retrieval infrastructure.</strong> You have excellent dictionary coverage (272,541 entries, 9 sources, comprehensive FTS + vector indexes).</p>
+<p><strong>The core problem IS</strong>:<br />
+1. <strong>Query-document vocabulary gap</strong> — users say "holka", entries say "koc"<br />
+2. <strong>Citation hallucination</strong> — model invents <code>[[DICT:word]]</code> not in results<br />
+3. <strong>Noisy VSEARCH top-20</strong> — embedding distance ≠ semantic relevance for specialized terms</p>
+<p><strong>All three are solvable with prompt engineering + lightweight inference</strong>, not data acquisition or infrastructure changes.</p>
+<hr />
+<h2 id="references">References</h2>
+<h3 id="primary-research-papers">Primary Research Papers</h3>
+<ul>
+<li><strong>Self-RAG</strong>: Asai et al., "Self-RAG: Learning to Retrieve, Generate, and Critique through Self-Reflection", ICLR 2024. <a href="https://arxiv.org/abs/2310.11511">arXiv:2310.11511</a></li>
+<li><strong>RAPTOR</strong>: Sarthi et al., "RAPTOR: Recursive Abstractive Processing for Tree-Organized Retrieval", ICLR 2024. <a href="https://arxiv.org/abs/2401.18059">arXiv:2401.18059</a></li>
+<li><strong>HyDE</strong>: Gao et al., "Precise Zero-Shot Dense Retrieval without Relevance Labels", ACL 2023. <a href="https://arxiv.org/abs/2212.10496">arXiv:2212.10496</a></li>
+<li><strong>CRAG</strong>: Yan et al., "Corrective Retrieval Augmented Generation", 2024. <a href="https://arxiv.org/abs/2401.15884">arXiv:2401.15884</a></li>
+</ul>
+<h3 id="surveys-benchmarks">Surveys &amp; Benchmarks</h3>
+<ul>
+<li>"A Comprehensive Survey of Retrieval-Augmented Generation (RAG): Evolution, Current Landscape and Future Directions" (2024). <a href="https://arxiv.org/abs/2410.12837">arXiv:2410.12837</a></li>
+<li>"Retrieval-Augmented Generation: A Comprehensive Survey of Architectures, Enhancements, and Robustness Frontiers" (2024). <a href="https://arxiv.org/abs/2506.00054">arXiv:2506.00054</a></li>
+<li>"A Systematic Review of Key RAG Systems: Progress, Gaps, and Future Directions" (2024). <a href="https://arxiv.org/html/2507.18910v1">arXiv:2507.18910</a></li>
+</ul>
+<h3 id="implementation-guides">Implementation Guides</h3>
+<ul>
+<li><a href="https://ragaboutit.com/the-query-rewriting-revolution-how-smart-prompt-engineering-is-eliminating-rag-retrieval-failures/">Query Rewriting Revolution</a></li>
+<li><a href="https://towardsdatascience.com/advanced-rag-retrieval-cross-encoders-reranking/">Cross-Encoder Reranking Guide</a></li>
+<li><a href="https://medium.com/@vaibhav-p-dixit/reranking-in-rag-cross-encoders-cohere-rerank-flashrank-c7d40c685f6a">Reranking in RAG: Cross-Encoders, Cohere, FlashRank</a></li>
+<li><a href="https://localaimaster.com/blog/reranking-cross-encoders-guide">BGE Reranker Benchmarks (2026)</a></li>
+<li><a href="https://docs.bswen.com/blog/2026-02-25-best-reranker-models/">Best Reranker Models Comparison</a></li>
+</ul>
+<h3 id="domain-specific-research">Domain-Specific Research</h3>
+<ul>
+<li>"Domain-specific embedding models for hydrology and environmental sciences" (2024). <a href="https://iwaponline.com/wst/article/92/9/1328/109925/">Water Science &amp; Technology</a></li>
+</ul>
+<hr />
+<h2 id="next-steps">Next Steps</h2>
+<ol>
+<li><strong>Review this document</strong> with team/stakeholders</li>
+<li><strong>Choose starting point</strong>: Recommend Phase 1 (Self-RAG + HyDE + Query Rewriting)</li>
+<li><strong>Set up A/B testing harness</strong> if not already in place</li>
+<li><strong>Baseline metrics</strong>: Run current PN22 prompt on all 17 queries, document metrics</li>
+<li><strong>Implement Phase 1 techniques</strong> one at a time, eval after each</li>
+<li><strong>Decide on Phase 2</strong> based on Phase 1 results</li>
+</ol>
+<p><strong>Estimated timeline</strong>:<br />
+- Phase 1: 1 week (3 techniques, sequential implementation + eval)<br />
+- Phase 2: 1 week (if Phase 1 results warrant it)<br />
+- Total: 2-3 weeks to 16/17 passing</p>
+<hr />
+<p><strong>Document version</strong>: 1.0<br />
+<strong>Last updated</strong>: 2026-06-29<br />
+<strong>Author</strong>: Claude (background research session)</p>
+
+<hr>
+<footer style="text-align: center; color: #57606a; font-size: 12px; margin-top: 48px;">
+  <p>Generated 2026-06-29 | <a href="https://martinpovolny.github.io">Martin Povolný</a></p>
+</footer>
+</body>
+</html>
