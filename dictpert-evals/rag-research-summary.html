@@ -1,0 +1,181 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<title>RAG Quality Research — Techniques Summary</title>
+<style>
+  body { font-family: -apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+          font-size:13px; line-height:1.6; color:#24292e; max-width:860px; margin:0 auto; padding:40px 24px; }
+  h1 { font-size:20px; border-bottom:1px solid #e1e4e8; padding-bottom:8px; }
+  h2 { font-size:16px; border-bottom:1px solid #f0f0f0; padding-bottom:4px; margin-top:28px; }
+  h3 { font-size:14px; margin-top:20px; } h4 { font-size:13px; margin-top:16px; }
+  table { border-collapse:collapse; width:100%; font-size:12px; margin:12px 0; }
+  th { text-align:left; background:#f6f8fa; border:1px solid #e1e4e8; padding:5px 8px; font-size:11px; }
+  td { border:1px solid #e1e4e8; padding:4px 8px; vertical-align:top; }
+  code { font-family:"SFMono-Regular",Consolas,monospace; font-size:11px;
+          background:#f6f8fa; padding:1px 4px; border-radius:3px; }
+  pre { background:#f6f8fa; padding:12px; border-radius:4px; font-size:11px; line-height:1.5; }
+  pre code { background:none; padding:0; }
+  blockquote { border-left:3px solid #e1e4e8; margin:0; padding-left:14px; color:#586069; }
+  hr { border:none; border-top:1px solid #e1e4e8; margin:24px 0; }
+  a { color:#0366d6; text-decoration:none; }
+  a:hover { text-decoration:underline; }
+</style></head><body><h1 id="rag-quality-research-techniques-summary">RAG Quality Research — Techniques Summary</h1>
+<p>Comprehensive overview of RAG improvement techniques from recent research, organized by implementation complexity.</p>
+<hr />
+<h2 id="prompt-only-techniques-no-new-infrastructure">Prompt-Only Techniques (No New Infrastructure)</h2>
+<h3 id="1-self-rag-self-critique-retrieval">1. Self-RAG — Self-Critique Retrieval</h3>
+<p><strong>Paper</strong>: <a href="https://arxiv.org/abs/2310.11511">Self-RAG: Learning to Retrieve, Generate, and Critique through Self-Reflection</a> (Asai et al., ICLR 2024)</p>
+<p><strong>Problem</strong>: Model hallucinates citations or uses retrieved content without verifying relevance.</p>
+<p><strong>Solution</strong>: After each retrieval, LLM emits short critique sentence: "Does this retrieved entry support my intended citation?" Zero-shot approximation — no training needed.</p>
+<p><strong>Implementation</strong>: Add critique instruction to system prompt after tool result injection. Model self-evaluates retrieved content before using it.</p>
+<p><strong>Dictpert application</strong>: Prevent <code>[[ČJA:word]]</code> citations that never appeared in LOOKUP results.</p>
+<hr />
+<h3 id="2-ircot-interleaving-retrieval-with-chain-of-thought">2. IRCoT — Interleaving Retrieval with Chain of Thought</h3>
+<p><strong>Paper</strong>: <a href="https://arxiv.org/abs/2212.10509">Interleaving Retrieval with Chain-of-Thought Reasoning for Knowledge-Intensive Multi-Step Questions</a> (Trivedi et al., ACL 2023)</p>
+<p><strong>Problem</strong>: Model jumps into retrieval without planning, wastes lookups on irrelevant terms.</p>
+<p><strong>Solution</strong>: LLM emits <code>[PLAN: ...]</code> block BEFORE any search markers, declaring search strategy.</p>
+<p><strong>Implementation</strong>: Add planning step instruction to system prompt. Forces sequential reasoning for multi-dictionary questions.</p>
+<p><strong>Dictpert application</strong>: For "Jak se říká holce na Brněnsku?", model plans: "1) search ČJA for geographic variants, 2) search SNČJ for dialect headwords, 3) cross-reference"</p>
+<hr />
+<h3 id="3-react-reasoning-acting">3. ReAct — Reasoning + Acting</h3>
+<p><strong>Paper</strong>: <a href="https://arxiv.org/abs/2210.03629">ReAct: Synergizing Reasoning and Acting in Language Models</a> (Yao et al., ICLR 2023)</p>
+<p><strong>Problem</strong>: Unclear why model chose specific searches, hard to debug failures.</p>
+<p><strong>Solution</strong>: Before each search marker, LLM emits <code>[THOUGHT: why I'm searching and what I expect]</code>.</p>
+<p><strong>Implementation</strong>: Add explicit thought markers to tool protocol. Stripped from display, logged for eval analysis.</p>
+<p><strong>Dictpert application</strong>: <code>[THOUGHT: "holka" returned 0 in SNČJ; trying regional variant "holča"]</code> → <code>[LOOKUP: holča | sncj]</code></p>
+<hr />
+<h2 id="retrieval-improvements">Retrieval Improvements</h2>
+<h3 id="4-hyde-hypothetical-document-embeddings">4. HyDE — Hypothetical Document Embeddings</h3>
+<p><strong>Paper</strong>: <a href="https://arxiv.org/abs/2212.10496">Precise Zero-Shot Dense Retrieval without Relevance Labels</a> (Gao et al., ACL 2023)</p>
+<p><strong>Problem</strong>: Vocabulary mismatch — user says "holka", entry says "koc" (Brno slang).</p>
+<p><strong>Solution</strong>: Generate a hypothetical dictionary entry that would answer the question, embed THAT instead of the raw query.</p>
+<p><strong>Implementation</strong>: Intercept VSEARCH query, call LLM to generate fake entry, embed the synthetic text.</p>
+<p><strong>Dictpert application</strong>: Query "Jak se říká holce na Brněnsku?" → generate "koc: brněnský slangový výraz pro děvče..." → embed → finds real "koc" entry.</p>
+<hr />
+<h3 id="5-query2doc-query-expansion">5. Query2Doc — Query Expansion</h3>
+<p><strong>Paper</strong>: <a href="https://arxiv.org/abs/2303.07678">Query2doc: Query Expansion with Large Language Models</a> (Wang et al., EMNLP 2023)</p>
+<p><strong>Problem</strong>: Single search term misses entries indexed under synonyms.</p>
+<p><strong>Solution</strong>: Before issuing <code>[FTSEARCH:]</code>, call LLM to expand to 3–5 synonyms/related headword forms, build FTS5 OR query.</p>
+<p><strong>Implementation</strong>: Pure prompt + dispatcher change in <code>dict_db.py</code>, no new infrastructure.</p>
+<p><strong>Dictpert application</strong>: "holka" → expand to ["holka", "holča", "děvče", "dívka", "ženská"] → <code>ftsearch "holka OR holča OR děvče" | cja</code></p>
+<hr />
+<h3 id="6-bge-cross-encoder-reranking">6. BGE Cross-Encoder Reranking</h3>
+<p><strong>Paper</strong>: <a href="https://arxiv.org/abs/2309.07597">C-Pack: Packaged Resources To Advance General Chinese Embedding</a> (BAAI, 2023)</p>
+<p><strong>Model</strong>: <code>BAAI/bge-reranker-v2-m3</code> (multilingual cross-encoder)</p>
+<p><strong>Problem</strong>: Vector search returns semantically similar but irrelevant entries in top-10.</p>
+<p><strong>Solution</strong>: After VSEARCH returns top-20, run cross-encoder over (query, headword+excerpt) pairs; return top-5 to LLM.</p>
+<p><strong>Implementation</strong>: Add as optional <code>rerank=True</code> flag in <code>dicts/vector_db.py</code>.</p>
+<p><strong>Dictpert application</strong>: Reduces false VSEARCH hits that waste LOOKUP rounds.</p>
+<hr />
+<h3 id="7-labse-language-agnostic-bert-sentence-embedding">7. LaBSE — Language-Agnostic BERT Sentence Embedding</h3>
+<p><strong>Paper</strong>: <a href="https://arxiv.org/abs/2007.01852">Language-agnostic BERT Sentence Embedding</a> (Feng et al., ACL 2020)</p>
+<p><strong>Problem</strong>: Current <code>paraphrase-multilingual-mpnet-base-v2</code> may be out-of-distribution for dialect and historical Czech.</p>
+<p><strong>Solution</strong>: Benchmark <code>LaBSE</code> (109 languages, trained on parallel corpora) vs current embedding model.</p>
+<p><strong>Implementation</strong>: Eval on 20 queries over 500 SPJMS entries. If LaBSE wins on top-10 recall, swap in <code>dicts/vector_db.py</code>.</p>
+<p><strong>Dictpert application</strong>: Better semantic matching for archaic and dialectal Czech terms.</p>
+<hr />
+<h3 id="8-raptor-recursive-abstractive-processing-for-tree-organized-retrieval">8. RAPTOR — Recursive Abstractive Processing for Tree-Organized Retrieval</h3>
+<p><strong>Paper</strong>: <a href="https://arxiv.org/abs/2401.18059">RAPTOR: Recursive Abstractive Processing for Tree-Organized Retrieval</a> (Sarthi et al., ICLR 2024)</p>
+<p><strong>Problem</strong>: Individual entry embeddings don't capture cluster-level patterns (e.g., "all bird-sound interjections in ČJA").</p>
+<p><strong>Solution</strong>: Cluster entries by semantic similarity, generate one-sentence summaries per cluster, index alongside individual entries. VSEARCH hit on cluster summary guides LLM to issue LOOKUPs across the cluster.</p>
+<p><strong>Implementation</strong>: Pilot on SPJMS (most homogeneous — all geographic names). Cluster 25k entries → generate summaries → add to ChromaDB.</p>
+<p><strong>Dictpert application</strong>: "volání na ptáky" matches cluster summary → LLM gets hint to search <code>volání na kachny</code>, <code>volání na slepice</code>, etc.</p>
+<hr />
+<h2 id="advanced-techniques">Advanced Techniques</h2>
+<h3 id="9-flare-forward-looking-active-retrieval">9. FLARE — Forward-Looking Active Retrieval</h3>
+<p><strong>Paper</strong>: <a href="https://arxiv.org/abs/2305.06983">Active Retrieval Augmented Generation</a> (Jiang et al., EMNLP 2023)</p>
+<p><strong>Problem</strong>: Model hallucinates before retrieval occurs.</p>
+<p><strong>Solution</strong>: Trigger retrieval mid-generation when model confidence drops below threshold.</p>
+<p><strong>Requirements</strong>: Logprob access from API (may not be exposed by all providers).</p>
+<p><strong>Dictpert application</strong>: Catch hallucination-in-progress, trigger emergency LOOKUP before synthesis completes.</p>
+<hr />
+<h3 id="10-splade-sparse-lexical-and-expansion-model">10. SPLADE — Sparse Lexical and Expansion Model</h3>
+<p><strong>Paper</strong>: <a href="https://arxiv.org/abs/2107.05720">SPLADE: Sparse Lexical and Expansion Model for First Stage Ranking</a> (Formal et al., SIGIR 2021)</p>
+<p><strong>Paper</strong>: <a href="https://arxiv.org/abs/2109.10086">SPLADE v2: Sparse Lexical and Expansion Model for Information Retrieval</a> (Formal et al., 2021)</p>
+<p><strong>Problem</strong>: BM25 FTS misses semantically related terms not in query.</p>
+<p><strong>Solution</strong>: Replace FTS5 BM25 with SPLADE — learned sparse retrieval via BERT vocabulary projection (implicit query expansion).</p>
+<p><strong>Model</strong>: <code>naver/splade-cocondenser-selfdistil</code></p>
+<p><strong>Implementation</strong>: Heavy infrastructure change. Evaluate after HyDE/Query2Doc validate vocabulary-gap hypothesis.</p>
+<p><strong>Dictpert application</strong>: "holka" automatically expands to dialect variants without explicit synonym list.</p>
+<hr />
+<h3 id="11-toolformer-tool-use-fine-tuning">11. Toolformer — Tool Use Fine-Tuning</h3>
+<p><strong>Paper</strong>: <a href="https://arxiv.org/abs/2302.04761">Toolformer: Language Models Can Teach Themselves to Use Tools</a> (Schick et al., NeurIPS 2023)</p>
+<p><strong>Problem</strong>: Model doesn't know when to LOOKUP vs FTSEARCH vs VSEARCH.</p>
+<p><strong>Solution</strong>: Collect (query → search-marker) pairs from successful eval conversations; fine-tune smaller model to learn tool-selection patterns.</p>
+<p><strong>Requirements</strong>: ~500+ labeled successful conversations.</p>
+<p><strong>Dictpert application</strong>: Long-term — train lightweight router model to predict optimal search strategy.</p>
+<hr />
+<h3 id="12-adaptive-rag-query-routing">12. Adaptive-RAG — Query Routing</h3>
+<p><strong>Paper</strong>: <a href="https://arxiv.org/abs/2403.14403">Adaptive-RAG: Learning to Adapt Retrieval-Augmented Large Language Models through Question Complexity</a> (Jeong et al., NAACL 2024)</p>
+<p><strong>Problem</strong>: All queries get same heavy VSEARCH+FTSEARCH+LOOKUP pipeline even when simple LOOKUP suffices.</p>
+<p><strong>Solution</strong>: Train small classifier to predict query complexity → route to LOOKUP-only, FTSEARCH+LOOKUP, or full pipeline.</p>
+<p><strong>Dictpert application</strong>: Heuristic version first — emit only LOOKUP if user query contains short Czech-looking word; escalate on zero result.</p>
+<hr />
+<h2 id="evaluation-frameworks">Evaluation Frameworks</h2>
+<h3 id="13-mt-bench-llm-as-judge">13. MT-Bench — LLM-as-Judge</h3>
+<p><strong>Paper</strong>: <a href="https://arxiv.org/abs/2306.05685">Judging LLM-as-a-Judge with MT-Bench and Chatbot Arena</a> (Zheng et al., NeurIPS 2023)</p>
+<p><strong>Application</strong>: Send final conversation + retrieved context to judge LLM with Czech dialectology rubric: "Are all cited headwords verified via LOOKUP?", "Does answer correctly reflect geographic distribution?"</p>
+<p><strong>Implementation</strong>: <code>--judge</code> flag in <code>scripts/test_prompt.py</code>. Store scores in <code>messages</code> table. ~€0.01/conv.</p>
+<hr />
+<h3 id="14-ragas-retrieval-augmented-generation-assessment">14. RAGAS — Retrieval-Augmented Generation Assessment</h3>
+<p><strong>Paper</strong>: <a href="https://arxiv.org/abs/2309.15217">RAGAS: Automated Evaluation of Retrieval Augmented Generation</a> (Es et al., EACL 2024)</p>
+<p><strong>Metrics</strong>: Answer Faithfulness, Context Precision, Context Recall</p>
+<p><strong>Implementation</strong>: Python package <code>ragas</code>. Retrieved docs = LOOKUP/FTSEARCH results; ground truth = manually verified headwords.</p>
+<p><strong>Dictpert application</strong>: Automated eval metrics over existing conversations.</p>
+<hr />
+<h2 id="graphrag">GraphRAG</h2>
+<h3 id="15-graphrag-knowledge-graph-retrieval">15. GraphRAG — Knowledge Graph Retrieval</h3>
+<p><strong>Paper</strong>: <a href="https://arxiv.org/abs/2404.16130">From Local to Global: A Graph RAG Approach to Query-Focused Summarization</a> (Edge et al., Microsoft Research, 2024)</p>
+<p><strong>Problem</strong>: Linear entry-by-entry search misses graph-structured relationships (village → okres → dialect zone).</p>
+<p><strong>Solution</strong>: Build <code>geo_graph</code> table (village → okres → dialect_zone); expose as <code>[GEOLOOKUP:]</code> tool.</p>
+<p><strong>Dictpert application</strong>: "Jak se říká X na Valašsku?" → geographic graph traversal finds all Valašsko villages → searches entries from those villages.</p>
+<hr />
+<h2 id="czech-nlp-specific">Czech NLP Specific</h2>
+<h3 id="16-robeczech-cross-encoder">16. RobeCzech Cross-Encoder</h3>
+<p><strong>Paper</strong>: <a href="https://arxiv.org/abs/2105.11314">RobeCzech: Czech RoBERTa, a Monolingual Contextualized Language Representation Model</a> (Straka et al., TSD 2021)</p>
+<p><strong>Model</strong>: <code>ufal/robeczech-base</code></p>
+<p><strong>Problem</strong>: Multilingual models handle Czech case/number/gender variation less accurately than Czech-specific BERT.</p>
+<p><strong>Solution</strong>: Fine-tune RobeCzech as cross-encoder reranker on (query, entry) pairs using labeled eval data.</p>
+<p><strong>Requirements</strong>: ~100 labeled pairs for first experiment.</p>
+<p><strong>Dictpert application</strong>: Better reranking for Czech morphological variants.</p>
+<hr />
+<h2 id="priority-implementation-order">Priority Implementation Order</h2>
+<p>Based on effort/impact ratio:</p>
+<ol>
+<li><strong>Self-RAG critique</strong> (prompt-only, 2h) — immediate citation quality boost</li>
+<li><strong>IRCoT planning</strong> (prompt-only, 2h) — better multi-step reasoning</li>
+<li><strong>Query2Doc FTS expansion</strong> (1 day) — vocabulary gap fix</li>
+<li><strong>HyDE for VSEARCH</strong> (1 day) — semantic vocabulary gap fix</li>
+<li><strong>BGE reranker</strong> (2 days) — VSEARCH precision</li>
+<li><strong>LLM-as-Judge eval</strong> (1 day) — scalable A/B testing</li>
+<li><strong>Czech morpho normalizer</strong> (2 days, already done: majka) — zero-result reduction</li>
+<li><strong>LaBSE comparison</strong> (1 day) — embedding quality baseline</li>
+<li><strong>RAGAS metrics</strong> (2 days) — automated eval</li>
+<li><strong>RobeCzech reranker</strong> (1 week) — Czech-specific boost</li>
+</ol>
+<p>Research-tier (longer horizon):
+- RAPTOR clusters
+- FLARE mid-generation retrieval
+- SPLADE learned sparse retrieval
+- Toolformer fine-tuning
+- Adaptive-RAG routing</p>
+<hr />
+<h2 id="references">References</h2>
+<p>Complete bibliography in chronological order:</p>
+<ul>
+<li><strong>ReAct</strong> (2022): https://arxiv.org/abs/2210.03629</li>
+<li><strong>IRCoT</strong> (2022): https://arxiv.org/abs/2212.10509</li>
+<li><strong>HyDE</strong> (2022): https://arxiv.org/abs/2212.10496</li>
+<li><strong>Toolformer</strong> (2023): https://arxiv.org/abs/2302.04761</li>
+<li><strong>Query2Doc</strong> (2023): https://arxiv.org/abs/2303.07678</li>
+<li><strong>FLARE</strong> (2023): https://arxiv.org/abs/2305.06983</li>
+<li><strong>MT-Bench</strong> (2023): https://arxiv.org/abs/2306.05685</li>
+<li><strong>BGE</strong> (2023): https://arxiv.org/abs/2309.07597</li>
+<li><strong>RAGAS</strong> (2023): https://arxiv.org/abs/2309.15217</li>
+<li><strong>Self-RAG</strong> (2023): https://arxiv.org/abs/2310.11511</li>
+<li><strong>RAPTOR</strong> (2024): https://arxiv.org/abs/2401.18059</li>
+<li><strong>Adaptive-RAG</strong> (2024): https://arxiv.org/abs/2403.14403</li>
+<li><strong>GraphRAG</strong> (2024): https://arxiv.org/abs/2404.16130</li>
+</ul>
+<p>Czech NLP:
+- <strong>LaBSE</strong> (2020): https://arxiv.org/abs/2007.01852
+- <strong>SPLADE</strong> (2021): https://arxiv.org/abs/2107.05720
+- <strong>RobeCzech</strong> (2021): https://arxiv.org/abs/2105.11314</p></body></html>
