@@ -1,0 +1,845 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<title>Eval Report: 2026-06-28-pn21-pn22-majka-cja</title>
+<style>
+  body { font-family: -apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+          font-size:13px; line-height:1.6; color:#24292e; max-width:860px; margin:0 auto; padding:40px 24px; }
+  h1 { font-size:20px; border-bottom:1px solid #e1e4e8; padding-bottom:8px; }
+  h2 { font-size:16px; border-bottom:1px solid #f0f0f0; padding-bottom:4px; margin-top:28px; }
+  h3 { font-size:14px; margin-top:20px; } h4 { font-size:13px; margin-top:16px; }
+  table { border-collapse:collapse; width:100%; font-size:12px; margin:12px 0; }
+  th { text-align:left; background:#f6f8fa; border:1px solid #e1e4e8; padding:5px 8px; font-size:11px; }
+  td { border:1px solid #e1e4e8; padding:4px 8px; vertical-align:top; }
+  code { font-family:"SFMono-Regular",Consolas,monospace; font-size:11px;
+          background:#f6f8fa; padding:1px 4px; border-radius:3px; }
+  pre { background:#f6f8fa; padding:12px; border-radius:4px; font-size:11px; line-height:1.5; }
+  pre code { background:none; padding:0; }
+  blockquote { border-left:3px solid #e1e4e8; margin:0; padding-left:14px; color:#586069; }
+  hr { border:none; border-top:1px solid #e1e4e8; margin:24px 0; }
+  a { color:#0366d6; text-decoration:none; }
+  a:hover { text-decoration:underline; }
+</style></head><body><h1 id="eval-report-2026-06-28-pn21pn22-majka-cja-improvements">Eval Report — 2026-06-28 (PN21+PN22 + majka + ČJA improvements)</h1>
+<p><strong>Prompt:</strong> <code>prompts/system_dict.md</code> (snapshot: <a href="system_dict_prompt.md">system_dict_prompt.md</a>)
+<strong>Changes vs baseline (2026-06-26):</strong>
+- <strong>PN21</strong> — ČJA compound headword lookup: model now told to use <code>(animal) verb</code> format (e.g. <code>(kočka) mňouká</code>) when looking up animal sounds in ČJA
+- <strong>PN22</strong> — ČJA compound headword for commands: model told to use <code>jeď!</code>, <code>stůj!</code>, <code>nalevo!</code>, etc. format for horse commands
+- <strong>majka <code>-ti</code> variant expansion</strong> — <code>dict_db.lemmatize()</code> now appends <code>-ti</code> form after each <code>-t</code> verb lemma (e.g. <code>mňoukat → mňoukati</code>) so SSJČ archaic infinitives are found
+- <strong><code>text_enriched</code> pre-computation</strong> — <code>db/cja.db</code> now has <code>hesla.text_enriched</code> column with locality codes pre-substituted to <code>Village/Okres</code>; <code>dicts/cja.py</code> uses it via COALESCE
+- <strong>ČJA embedding restructure</strong> — <code>scripts/build_vector_index.py:_extract_cja</code> now emits section 2 ("Mapa sleduje…") before section 1 (variant forms) so semantic keywords fall within the ~512-token embedding window
+- <strong>First 17-query run</strong> — extends eval coverage from 11 to 17 answerable queries (Q21–Q26 added)</p>
+<p><strong>Model:</strong> claude-haiku-4-5 / Anthropic
+<strong>Baseline:</strong> <a href="../2026-06-26-pn18-sncj-struct/report.md">evals/2026-06-26-pn18-sncj-struct/report.md</a> (6✅/4⚠/1❌ on 11 queries)</p>
+<hr />
+<h2 id="cost">Cost</h2>
+<table>
+<thead>
+<tr>
+<th>Query</th>
+<th>Conv ID</th>
+<th>Model</th>
+<th>Tokens in</th>
+<th>Tokens out</th>
+<th>Cost (input)</th>
+<th>Cost (output)</th>
+<th>Total cost</th>
+<th>Latency</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Q06</td>
+<td>985e7ecd</td>
+<td>claude-haiku-4-5</td>
+<td>76,635</td>
+<td>2,510</td>
+<td>$0.0613</td>
+<td>$0.0100</td>
+<td>$0.0713</td>
+<td>33s</td>
+</tr>
+<tr>
+<td>Q08</td>
+<td>4b82859e</td>
+<td>claude-haiku-4-5</td>
+<td>131,303</td>
+<td>2,574</td>
+<td>$0.1050</td>
+<td>$0.0103</td>
+<td>$0.1153</td>
+<td>49s</td>
+</tr>
+<tr>
+<td>Q09</td>
+<td>e3382fc9</td>
+<td>claude-haiku-4-5</td>
+<td>152,730</td>
+<td>2,860</td>
+<td>$0.1222</td>
+<td>$0.0114</td>
+<td>$0.1336</td>
+<td>42s</td>
+</tr>
+<tr>
+<td>Q11</td>
+<td>4a1fa94c</td>
+<td>claude-haiku-4-5</td>
+<td>96,804</td>
+<td>2,118</td>
+<td>$0.0774</td>
+<td>$0.0085</td>
+<td>$0.0859</td>
+<td>33s</td>
+</tr>
+<tr>
+<td>Q14</td>
+<td>b71918dd</td>
+<td>claude-haiku-4-5</td>
+<td>199,275</td>
+<td>4,742</td>
+<td>$0.1594</td>
+<td>$0.0190</td>
+<td>$0.1784</td>
+<td>59s</td>
+</tr>
+<tr>
+<td>Q15</td>
+<td>35aa98e0</td>
+<td>claude-haiku-4-5</td>
+<td>60,546</td>
+<td>1,302</td>
+<td>$0.0484</td>
+<td>$0.0052</td>
+<td>$0.0536</td>
+<td>18s</td>
+</tr>
+<tr>
+<td>Q16</td>
+<td>5acce437</td>
+<td>claude-haiku-4-5</td>
+<td>77,155</td>
+<td>1,832</td>
+<td>$0.0617</td>
+<td>$0.0073</td>
+<td>$0.0691</td>
+<td>24s</td>
+</tr>
+<tr>
+<td>Q17</td>
+<td>5e0a263d</td>
+<td>claude-haiku-4-5</td>
+<td>57,147</td>
+<td>1,415</td>
+<td>$0.0457</td>
+<td>$0.0057</td>
+<td>$0.0514</td>
+<td>20s</td>
+</tr>
+<tr>
+<td>Q18</td>
+<td>8b010e1b</td>
+<td>claude-haiku-4-5</td>
+<td>40,114</td>
+<td>1,616</td>
+<td>$0.0321</td>
+<td>$0.0065</td>
+<td>$0.0386</td>
+<td>23s</td>
+</tr>
+<tr>
+<td>Q19</td>
+<td>b65e3ec4</td>
+<td>claude-haiku-4-5</td>
+<td>53,596</td>
+<td>2,853</td>
+<td>$0.0429</td>
+<td>$0.0114</td>
+<td>$0.0543</td>
+<td>40s</td>
+</tr>
+<tr>
+<td>Q20</td>
+<td>00424fe8</td>
+<td>claude-haiku-4-5</td>
+<td>72,914</td>
+<td>2,713</td>
+<td>$0.0583</td>
+<td>$0.0109</td>
+<td>$0.0692</td>
+<td>29s</td>
+</tr>
+<tr>
+<td>Q21</td>
+<td>0a3111c2</td>
+<td>claude-haiku-4-5</td>
+<td>74,178</td>
+<td>1,973</td>
+<td>$0.0593</td>
+<td>$0.0079</td>
+<td>$0.0672</td>
+<td>29s</td>
+</tr>
+<tr>
+<td>Q22</td>
+<td>96674d48</td>
+<td>claude-haiku-4-5</td>
+<td>62,753</td>
+<td>2,564</td>
+<td>$0.0502</td>
+<td>$0.0103</td>
+<td>$0.0605</td>
+<td>35s</td>
+</tr>
+<tr>
+<td>Q23</td>
+<td>93da170c</td>
+<td>claude-haiku-4-5</td>
+<td>45,099</td>
+<td>2,277</td>
+<td>$0.0361</td>
+<td>$0.0091</td>
+<td>$0.0452</td>
+<td>29s</td>
+</tr>
+<tr>
+<td>Q24</td>
+<td>11853c8f</td>
+<td>claude-haiku-4-5</td>
+<td>37,318</td>
+<td>1,953</td>
+<td>$0.0299</td>
+<td>$0.0078</td>
+<td>$0.0377</td>
+<td>26s</td>
+</tr>
+<tr>
+<td>Q25</td>
+<td>458d9747</td>
+<td>claude-haiku-4-5</td>
+<td>77,701</td>
+<td>3,213</td>
+<td>$0.0622</td>
+<td>$0.0129</td>
+<td>$0.0750</td>
+<td>39s</td>
+</tr>
+<tr>
+<td>Q26</td>
+<td>a6dc49ff</td>
+<td>claude-haiku-4-5</td>
+<td>44,894</td>
+<td>1,062</td>
+<td>$0.0359</td>
+<td>$0.0042</td>
+<td>$0.0402</td>
+<td>16s</td>
+</tr>
+<tr>
+<td><strong>TOTAL</strong></td>
+<td></td>
+<td></td>
+<td><strong>1,360,162</strong></td>
+<td><strong>39,577</strong></td>
+<td><strong>$1.0881</strong></td>
+<td><strong>$0.1583</strong></td>
+<td><strong>$1.2464</strong></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>Cost rates: claude-haiku-4-5 = $0.80/1M input, $4.00/1M output.
+Average per query: $0.073. Total for 17 queries: $1.25.</p>
+</blockquote>
+<hr />
+<h2 id="per-query-summary">Per-query summary</h2>
+<table>
+<thead>
+<tr>
+<th>Query</th>
+<th>Conv ID</th>
+<th>Latency</th>
+<th>Rounds</th>
+<th>Lookups</th>
+<th>Zero-result</th>
+<th>Multi-word</th>
+<th>Dupes</th>
+<th>Dicts</th>
+<th>citation_check</th>
+<th>Leakage</th>
+<th>Verdict</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Q6 — krojové odívání</td>
+<td>985e7ecd</td>
+<td>33s</td>
+<td>5</td>
+<td>22</td>
+<td>6 (27%)</td>
+<td>11</td>
+<td>0</td>
+<td>assc,sncj</td>
+<td>✗</td>
+<td>✗</td>
+<td>✅ Good</td>
+</tr>
+<tr>
+<td>Q8 — povel pro koně</td>
+<td>4b82859e</td>
+<td>49s</td>
+<td>2</td>
+<td>3</td>
+<td>1 (33%)</td>
+<td>2</td>
+<td>0</td>
+<td>cja</td>
+<td>✅ fired</td>
+<td>✗</td>
+<td>✅ Good</td>
+</tr>
+<tr>
+<td>Q9 — frazémy alkohol</td>
+<td>e3382fc9</td>
+<td>42s</td>
+<td>6</td>
+<td>24</td>
+<td>8 (33%)</td>
+<td>21</td>
+<td>1</td>
+<td>assc,sncj</td>
+<td>✅ fired</td>
+<td>✗</td>
+<td>⚠ Partial</td>
+</tr>
+<tr>
+<td>Q11 — germanismy</td>
+<td>4a1fa94c</td>
+<td>33s</td>
+<td>6</td>
+<td>12</td>
+<td>5 (41%)</td>
+<td>7</td>
+<td>0</td>
+<td>sncj,ssjc</td>
+<td>✅ fired</td>
+<td>✗</td>
+<td>⚠ Partial</td>
+</tr>
+<tr>
+<td>Q14 — ptačí zvuky</td>
+<td>b71918dd</td>
+<td>59s</td>
+<td>6</td>
+<td>22</td>
+<td>3 (13%)</td>
+<td>12</td>
+<td>0</td>
+<td>cja,sncj</td>
+<td>✅ fired</td>
+<td>✗</td>
+<td>✅ Good</td>
+</tr>
+<tr>
+<td>Q15 — holka Brněnsko</td>
+<td>35aa98e0</td>
+<td>18s</td>
+<td>2</td>
+<td>5</td>
+<td>0 (0%)</td>
+<td>2</td>
+<td>0</td>
+<td>cja,sncj</td>
+<td>✗</td>
+<td>✗</td>
+<td>⚠ Partial</td>
+</tr>
+<tr>
+<td>Q16 — doklady Brněnsko</td>
+<td>5acce437</td>
+<td>24s</td>
+<td>2</td>
+<td>5</td>
+<td>1 (20%)</td>
+<td>2</td>
+<td>0</td>
+<td>cja,sncj</td>
+<td>✗</td>
+<td>✗</td>
+<td>⚠ Partial</td>
+</tr>
+<tr>
+<td>Q17 — bouda Morava</td>
+<td>5e0a263d</td>
+<td>20s</td>
+<td>2</td>
+<td>5</td>
+<td>0 (0%)</td>
+<td>0</td>
+<td>2</td>
+<td>cja,sncj,spjms</td>
+<td>✗</td>
+<td>✗</td>
+<td>✅ Good</td>
+</tr>
+<tr>
+<td>Q18 — kráva bučí</td>
+<td>8b010e1b</td>
+<td>23s</td>
+<td>1</td>
+<td>3</td>
+<td>1 (33%)</td>
+<td>3</td>
+<td>0</td>
+<td>cja,sncj</td>
+<td>✗</td>
+<td>✗</td>
+<td>✅ Good</td>
+</tr>
+<tr>
+<td>Q19 — kočka holub prase</td>
+<td>b65e3ec4</td>
+<td>40s</td>
+<td>1</td>
+<td>3</td>
+<td>0 (0%)</td>
+<td>3</td>
+<td>0</td>
+<td>cja</td>
+<td>✗</td>
+<td>✗</td>
+<td>✅ Good</td>
+</tr>
+<tr>
+<td>Q20 — psí zvuky SNČJ</td>
+<td>00424fe8</td>
+<td>29s</td>
+<td>2</td>
+<td>12</td>
+<td>2 (16%)</td>
+<td>2</td>
+<td>0</td>
+<td>sncj</td>
+<td>✅ fired</td>
+<td>✗</td>
+<td>✅ Good</td>
+</tr>
+<tr>
+<td>Q21 — brambor/zemák</td>
+<td>0a3111c2</td>
+<td>29s</td>
+<td>1</td>
+<td>2</td>
+<td>0 (0%)</td>
+<td>0</td>
+<td>0</td>
+<td>cja</td>
+<td>✗</td>
+<td>✗</td>
+<td>✅ Good</td>
+</tr>
+<tr>
+<td>Q22 — Babák etymologie</td>
+<td>96674d48</td>
+<td>35s</td>
+<td>2</td>
+<td>6</td>
+<td>2 (33%)</td>
+<td>2</td>
+<td>0</td>
+<td>spjc,spjms</td>
+<td>✅ fired</td>
+<td>✗</td>
+<td>✅ Good</td>
+</tr>
+<tr>
+<td>Q23 — čert frazémy</td>
+<td>93da170c</td>
+<td>29s</td>
+<td>2</td>
+<td>2</td>
+<td>0 (0%)</td>
+<td>0</td>
+<td>1</td>
+<td>sncj</td>
+<td>✗</td>
+<td>✗</td>
+<td>✅ Good</td>
+</tr>
+<tr>
+<td>Q24 — babák 5 dicts</td>
+<td>11853c8f</td>
+<td>26s</td>
+<td>1</td>
+<td>5</td>
+<td>2 (40%)</td>
+<td>0</td>
+<td>0</td>
+<td>assc,cja,psjc,sncj,ssjc</td>
+<td>✗</td>
+<td>✗</td>
+<td>✅ Good</td>
+</tr>
+<tr>
+<td>Q25 — maminka/tatínek</td>
+<td>458d9747</td>
+<td>39s</td>
+<td>3</td>
+<td>11</td>
+<td>5 (45%)</td>
+<td>7</td>
+<td>0</td>
+<td>cja,sncj</td>
+<td>✗</td>
+<td>✗</td>
+<td>✅ Good</td>
+</tr>
+<tr>
+<td>Q26 — mléko varianty</td>
+<td>a6dc49ff</td>
+<td>16s</td>
+<td>1</td>
+<td>1</td>
+<td>0 (0%)</td>
+<td>0</td>
+<td>0</td>
+<td>cja</td>
+<td>✗</td>
+<td>✗</td>
+<td>✅ Good</td>
+</tr>
+</tbody>
+</table>
+<p><strong>TEST set</strong> (Q6, Q9, Q11, Q17, Q20, Q21, Q22, Q23, Q24, Q25, Q26): <strong>9✅ / 2⚠ / 0❌</strong>
+<strong>DEV set</strong> (Q8, Q14, Q15, Q16, Q18, Q19): <strong>4✅ / 2⚠ / 0❌</strong>
+<strong>Total: 13✅ / 4⚠ / 0❌</strong></p>
+<blockquote>
+<p><strong>Columns:</strong> <em>Latency</em> — total LLM time in seconds (<code>latency_ms</code>/1000); expected 30–120 s; <em>Rounds</em> — number of lookup rounds (max 5); <em>Lookups</em> — total tool calls (lookup + ftsearch + vsearch); <em>Zero-result</em> — calls returning 0 hits (lower is better); <em>Multi-word</em> — tool calls where query contains a space (ftsearch may return hits after preprocessing, lookup will return 0); <em>Dupes</em> — (term, dict_id) pairs searched more than once (wasted slots); <em>Dicts</em> — unique dict_ids used across all rounds; <em>citation_check</em> — post-loop citation verification pass fired; <em>Leakage</em> — ✗ none / ⚠ tool / ⚠ cite / ⚠ instr / ⚠ id / ⚠ narr; <em>Verdict</em> — ✅ Good / ⚠ Partial / ❌ Poor.</p>
+</blockquote>
+<hr />
+<h2 id="per-query-analysis">Per-query analysis</h2>
+<h3 id="q6-krojove-odivani-test">Q6 — Krojové odívání (TEST ✅)</h3>
+<p>5 rounds used (hit budget). Found 10 clothing terms in SNČJ (bruclík, blůza, blyšťák, babušanka, čumka, cvilinčička, camfrlok, delenka, drajdrutka, bachořánka) sorted into 6 ethnographic regions. The FTS strategy via <code>ftsearch "krojový oděv | sncj"</code> found appropriate entries. 11 of 22 lookups were multi-word phrase FTS. The answer opens directly without narration and is well-organized. ASSC searched (1–2 hits) but only SNČJ produced relevant dialect-level clothing terms.</p>
+<h3 id="q8-povel-pro-kone-dev">Q8 — Povel pro koně (DEV ✅)</h3>
+<p><strong>Major improvement vs baseline.</strong> Baseline (⚠): 10 lookups, 4 rounds, 50% zero-result, only found <code>jeď!</code> plus some false hits. This run (✅): 3 lookups, 2 rounds, R0 FTS found <code>jeď!</code> in ČJA immediately, R1 lookup confirmed 12+ variant forms. Answer covers all four sound variants (hi/hije/hijo, vi/vije/vijo, bi/bije/bijo, ďi/ďije/ďijo) with geographic distribution. PN22 (compound headword format for horse commands) is working. The model immediately searched ČJA rather than wasting rounds on SNČJ.</p>
+<h3 id="q9-frazemy-alkohol-test">Q9 — Frazémy alkohol (TEST ⚠)</h3>
+<p>Persistent structural miss. 21 of 24 lookups were multi-word FTS in ASSC. Found 2 genuine phrasemes: <code>pít jak(o) duha</code> and <code>být [opilý/ožralý ap.] jak(o) Dán</code>, plus 4 substantives (holdovat, kvartální alkoholik, etc.). SNČJ A-D was queried (<code>chlast*</code>→6 hits, confirmed) but FTS phrase searches on ASSC dominated the budget. The model acknowledges in the answer that SNČJ covers only A–D. Coverage remains limited to ASSC phrasemes. 1 dupe: <code>pít jak(o) duha</code> looked up twice.</p>
+<h3 id="q11-germanismy-test">Q11 — Germanismy (TEST ⚠)</h3>
+<p><strong>Improvement vs baseline (❌ → ⚠).</strong> Baseline invented šunka/knedlík from training knowledge. This run: R0 FTS <code>z německého</code>→3 hits, <code>z něm</code>→8 hits in SNČJ; R2 vsearch found <code>dajčárovat</code>, <code>bónvochtr</code>, <code>braťkař</code>. The answer correctly acknowledges the SNČJ A–D limitation: "Komprehenzivní seznam germanismů utříděný do sémantických okruhů nelze z SNČJ v současné podobě sestavit." Three plausible germanisms cited with ČJA tags. 5/12 lookups zero-result (wasted <code>germanismus</code>, <code>německá přejímka</code>, <code>šusták</code> ×3 across rounds). 5/12 multi-word. Not ❌ anymore but still not a comprehensive list.</p>
+<h3 id="q14-ptaci-zvuky-dev">Q14 — Ptačí zvuky (DEV ✅)</h3>
+<p>6 rounds, 22 lookups, 12 multi-word. Comprehensive coverage of bird call categories from both ČJA and SNČJ: <code>(kukačka) kuká</code>, <code>(slepice) kdáká</code>, <code>volání na slepice</code>, <code>volání na husy</code>, <code>volání na kachny</code>, plus SNČJ bird verbs (cvrlikat, cvrkat, čimčiřikat, čimčarovat, cvrčet, čipořit, bíbrdle). Full 6 rounds used. Answer is detailed and well-organized with geographic notes. No narration.</p>
+<h3 id="q15-holka-brnensko-dev">Q15 — Holka Brněnsko (DEV ⚠)</h3>
+<p>Opens cleanly with <code>[[ČJA:děvče]]</code> as primary Brněnsko term. But geographic precision is poor: cites <code>cérka</code> as "výrazný moravský dialektismus" without ČJA tag, and <code>žába</code> as "jihozápadní Morava" (correct). The answer correctly identifies děvče as central Moravian, but also lists slezské forms (ďevucha) as Brněnsko-adjacent without clarifying they are much further north. No false citations in the ČJA tags. Same structural limitation as before: ČJA text includes all localities and the model cannot filter to Brněnsko codes without a SQL tool.</p>
+<h3 id="q16-doklady-z-brnenska-dev">Q16 — Doklady z Brněnska (DEV ⚠)</h3>
+<p>Persistent geography error. The answer claims "z Brněnska konkrétně jsou doloženy" then cites Spálov/Nový Jičín (north Moravia), Horní Heřmanice/Ostrava, Žítkovka/Uherské Hradiště, Bukovic/Frýdek-Místek — none of which are Brněnsko. The structural root cause is the same as Q15: ČJA <code>text_enriched</code> contains all 477 locality codes inline and the model cannot filter to only the 50–60 codes covering Brněnsko (Brno-město, Brno-venkov, Blansko, Vyškov). No <code>[[DICT:[</code> broken citations; all tags well-formed.</p>
+<h3 id="q17-bouda-morava-test">Q17 — Bouda Morava (TEST ✅)</h3>
+<p>2 rounds, 5 lookups (including dupes). Correct variants: búda (central Moravia/Valašsko/Hodonínsko), bóda (Olomoucko/Třebíčsko/Litovelsko), bouda (northern Moravia). Morphological variants: búďe, búdi, búďa. SNČJ structured rendering provides Village/Okres context for each form. ČJA searched separately confirming the hanácké vocalic shifts (ou→ú, ou→ó). 2 dupes: <code>bouda</code> looked up twice each in sncj and cja — wasted 2 slots.</p>
+<h3 id="q18-krava-buci-dev">Q18 — Kráva bučí (DEV ✅)</h3>
+<p>Minimal and correct. R0: <code>(kráva) bučí</code>→1 hit in ČJA (PN21 format working), <code>kráva bučení zvuk</code>→0 in SNČJ (expected, SNČJ doesn't have compound headwords for animal sounds), <code>bučení kráva</code>→1 in ČJA. Answer lists 12+ sound variants with geographic distribution. No narration. Opens "Nářeční varianty zvuku, který vydává kráva, jsou v Českém jazykovém atlasu zaznamenány v následujícím přehledu:" — correct and clean.</p>
+<h3 id="q19-kocka-holub-prase-dev">Q19 — Kočka holub prase (DEV ✅)</h3>
+<p><strong>Best result in this eval.</strong> 1 round, 3 lookups, 0 zero-result. All 3 compound ČJA headwords found immediately: <code>(kočka) mňouká</code>→1, <code>(holub) vrká</code>→1, <code>(prase) chrochtá</code>→1. Answer is comprehensive: kočka (13 morphological and phonological variants with regional map), holub (6 variants including slezské hurká/gruchá/bublá), prase (extensive: chrochtá/krochtá/rochtá/hrochtá/chrochce + 6 morphological variants + 8 alternative base forms). PN21 format works perfectly here. This was a Partial in earlier runs where it wasted rounds on SNČJ phrase searches.</p>
+<h3 id="q20-psi-zvuky-sncj-test">Q20 — Psí zvuky SNČJ (TEST ✅)</h3>
+<p>2 rounds, 12 lookups. R0: <code>štěkat</code>→8 hits, <code>vrčet</code>→1; R1: confirmed 8 headwords. Finds 7 štěkání words (běchat, blavoznit, blafíňat, blafouňat, blavýzňat, blavouňat, blavúzňat) + 1 vrčení word (brčat/brčet). SNČJ structured rendering provides Village/Okres for each: blavoznit → "Vlkoš/Hodonín", blafíňat → "Vsetínsko". Clean organized answer. Note: ČJA was not searched — dog barking has no compound ČJA headword, so this is correct behaviour.</p>
+<h3 id="q21-bramborzemak-test">Q21 — Brambor/zemák (TEST ✅)</h3>
+<p><strong>Efficient and excellent.</strong> 1 round, 2 lookups, 0 zero-result. Answer covers: brambor/brambora (Čechy, with okraj variants brambur/bandor), zemák (northern Morava/Slezsko), zemňák (Valašsko/Holešovsko/Kroměřížsko), zemják (Holešovsko/Těšínsko), zemče (relikt, Rakovnicko), erteple/grumbír/kartofel (German loans on southern Moravia). Geographic dichotomy correctly noted: brambor dominant west of the Bohemian-Moravian border, zemák/zemňák east. ČJA vsearch not needed — <code>brambor</code> lookup found 6 entries directly.</p>
+<h3 id="q22-etymologie-babak-test">Q22 — Etymologie Babák (TEST ✅)</h3>
+<p>2 rounds, 6 lookups. SPJMS (pomístní jména) correctly identified as the primary source. Finds 4 SPJMS entries for BABÁK variants, 1 for BABÁKOVSKÝ. Answer provides dual etymology: (1) apelativum <em>baba</em> + suffix <em>-ák</em>, (2) univerbizace of <em>Babí kopec</em>. Geographic distribution: western Moravia (Třebíč, Brno-venkov, Uherské Hradiště, Sklené nad Oslavou). Detailed with specific localities. SPJČ searched but found 0 (correct — SPJČ covers South Bohemia, not Moravia). Citation check fired.</p>
+<h3 id="q23-cert-frazemy-sncj-test">Q23 — Čert frazémy SNČJ (TEST ✅)</h3>
+<p>2 rounds, 2 lookups (1 dupe: <code>čert</code> in sncj called twice). Despite the dupe, excellent result: 15 documented frazémy organized into semantic categories (lakota/chamtivost, hněv, nepořádek, divokost/prudkost, strach, vyhýbání práci, rychlost, mračení, totožnost, imperativní zaklínání). Geographic coverage: Valašsko, Hodonínsko, Vsetínsko, Kyjovsko (Morava), plus Benešovsko, Jičínsko, Semilsko (Čechy). Structured rendering shows Village/Okres for each doklad.</p>
+<h3 id="q24-babak-ve-vsech-slovnicich-test">Q24 — Babák ve všech slovnících (TEST ✅)</h3>
+<p><strong>Showcase of multi-dict coverage.</strong> 1 round, 5 lookups (all 5 dicts in R0). Result: SNČJ (babák→1, ČJA entry for dívku/holku), ČJA (babák→1, místo pro sbírání hub), PSJČ (babák→1, vulgarizmus: veš + porodní babička muž), SSJČ→0, ASSC→0. Answer correctly notes: "V normativních slovnících současné češtiny (SSJČ, ASSC) se nevyskytuje." Honest about gaps. This is exactly the intended use of the multi-dict architecture.</p>
+<h3 id="q25-maminkatatinek-narecni-varianty-test">Q25 — Maminka/tatínek nářeční varianty (TEST ✅)</h3>
+<p>3 rounds, 11 lookups, 7 multi-word, 5 zero-result. ČJA found <code>tatínek, maminka</code> compound entry in R1 (1 hit). SNČJ FTS <code>máma mama mami</code>→4 hits, <code>táta tata tatí</code>→3 hits in R1, then individual lookups confirmed. Answer: tatínek (standard + variants: tatí/Plzeňsko, tatíček/eastern Morava, tatulek/česko-polská nářečí, tatík/středočeská), maminka (standard + variants: mami/western Morava, mamička/Slovácko, maměnka/Valašsko, mamulka/Valašsko, mamina/Rychnovsko). Correctly acknowledges SNČJ A–D cannot reach maminka/tatínek directly.</p>
+<h3 id="q26-mleko-narecni-varianty-test">Q26 — Mléko nářeční varianty (TEST ✅)</h3>
+<p><strong>Most efficient query.</strong> 1 round, 1 lookup (<code>mléko</code>→3 in ČJA). Answer covers all 5 variants: mléko (Moravia), mlíko (most of Čechy), mleko (Frenštátsko/western Slezsko), mliko (ostravický úsek slezských nářečí), mlyko (česko-polská přechodná nářečí). Geographic distribution correctly described. Reference to atlas map č. 43 (díl 5, strana 110–111). No frills.</p>
+<hr />
+<h2 id="issue-catalogue">Issue catalogue</h2>
+<h3 id="issue-1-q15q16-cja-geographic-filtering-locality-codes-span-all-bohemiamoravia-medium">Issue 1 — Q15/Q16 ČJA geographic filtering: locality codes span all Bohemia/Moravia (MEDIUM)</h3>
+<p><strong>Appears in:</strong> Q15, Q16
+<strong>Occurrences:</strong> 2 (persistent across all evals)</p>
+<p>The <code>text_enriched</code> column substitutes all 477 locality codes inline. The model receives the full variant list including Slezsko forms (Spálov/Nový Jičín, Morávka/Frýdek-Místek) when asked specifically about Brněnsko. It cites these as Brněnsko examples — a geographic error. The model cannot filter localities without a <code>[SQLQUERY:]</code> tool.</p>
+<pre><code>Q16 answer claims: &quot;z Brněnska konkrétně jsou doloženy: ďevče (Spálov/Nový Jičín)&quot;
+Actual: Spálov is ~200 km from Brno
+</code></pre>
+<p><strong>Root cause:</strong> structural ČJA limitation. Mitigation: a <code>[SQLQUERY:]</code> tool against <code>body_site.okres</code> would allow <code>WHERE okres IN ('Brno-venkov','Brno-město','Blansko','Vyškov')</code>.</p>
+<h3 id="issue-2-q09q11-multi-word-phrase-saturation-medium">Issue 2 — Q09/Q11 multi-word phrase saturation (MEDIUM)</h3>
+<p><strong>Appears in:</strong> Q9 (21/24 = 88% multi-word), Q11 (7/12 = 58%), Q06 (11/22 = 50%), Q14 (12/22 = 55%), Q25 (7/11 = 64%)
+<strong>Wasted slots:</strong> approx. 30 across the batch</p>
+<p>Multi-word FTS queries are preprocessed by <code>_preprocess_fts_query()</code> and often return useful results (ASSC FTS handles them). However, many <code>ftsearch</code> calls still use natural-language phrases ("krojové odívání a jejich součásti") that get tokenized into individual unrelated terms. The budget is consumed exploring broad FTS without targeted follow-ups.</p>
+<h3 id="issue-3-q09-sncj-phraseme-discovery-gap-medium">Issue 3 — Q09 SNČJ phraseme discovery gap (MEDIUM)</h3>
+<p><strong>Appears in:</strong> Q9
+<strong>Occurrences:</strong> persistent across evals</p>
+<p>Q9 searches ASSC (21/24 lookups) and barely touches SNČJ (3 lookups, only <code>chlast*</code> fruitfully). SNČJ has phraseme sections in its <code>definition</code> JSON for entries like <code>pít</code>, <code>opilý</code>, <code>chlastat</code>. The structured rendering would surface these if the model searched SNČJ directly. The model is not prompted to check SNČJ phraseme sections for alcohol/drinking vocabulary.</p>
+<h3 id="issue-4-q11-germanismus-fts-failure-medium">Issue 4 — Q11 germanismus FTS failure (MEDIUM)</h3>
+<p><strong>Appears in:</strong> Q11
+<strong>Occurrences:</strong> persistent (~7/10 runs)</p>
+<p>The correct strategy for Q11 is <code>ftsearch "z něm" | sncj</code> → enumerate entries with German etymology markers. This run partially succeeded (found <code>z německého</code>/<code>z něm</code> in R0 →8 hits) but then wasted 5 lookups on zero-result terms (<code>germanismus</code>, <code>německá přejímka</code>, <code>šusták</code>×3). The vsearch fallback found 3 plausible germanisms via semantic search. Full coverage of SNČJ A–D germanisms requires knowing to search the etymology markers explicitly.</p>
+<h3 id="issue-5-duplicate-lookups-in-q09-q17-q23-low">Issue 5 — Duplicate lookups in Q09, Q17, Q23 (LOW)</h3>
+<p><strong>Appears in:</strong> Q9 (1 dupe), Q17 (2 dupes: bouda×cja and bouda×sncj), Q23 (1 dupe: čert×sncj)
+<strong>Wasted slots:</strong> 4 across the batch</p>
+<p>Round-to-round duplication persists at low levels. No run was severely impacted.</p>
+<h3 id="issue-6-q06-hits-round-5-budget-low">Issue 6 — Q06 hits round 5 budget (LOW)</h3>
+<p><strong>Appears in:</strong> Q6
+<strong>Occurrences:</strong> 1</p>
+<p>Q6 ran all 5 rounds with 22 lookups, 11 multi-word. The answer is ✅ Good but the budget was exhausted. Additional krojové items (specifically non-A-D entries) remain undiscovered. Not harmful in this run since the answer is comprehensive for available data.</p>
+<hr />
+<h2 id="common-issues-ranked">Common issues ranked</h2>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Issue</th>
+<th>Queries affected</th>
+<th>Impact</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>Q15/Q16 geographic filtering</td>
+<td>Q15, Q16</td>
+<td>Medium — geography claims are wrong, undetectable without ČJA locality knowledge</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Multi-word phrase saturation</td>
+<td>Q6, Q9, Q11, Q14, Q25</td>
+<td>Medium — wastes 30+ lookup slots on broad FTS; targeted lookups use fewer rounds</td>
+</tr>
+<tr>
+<td>3</td>
+<td>SNČJ phraseme discovery gap</td>
+<td>Q9</td>
+<td>Medium — phraseme queries return ASSC results only; SNČJ structured phrasemes not reached</td>
+</tr>
+<tr>
+<td>4</td>
+<td>Q11 germanismus FTS failure</td>
+<td>Q11</td>
+<td>Medium — produces partial answer (3 forms vs possible 10+)</td>
+</tr>
+<tr>
+<td>5</td>
+<td>Duplicate lookups</td>
+<td>Q9, Q17, Q23</td>
+<td>Low — 4 wasted slots; no answer-quality impact</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>Ranked by impact on answer quality. <em>High</em> = undetectable hallucination risk or major budget waste; <em>Medium</em> = coverage gaps or reproducibility problems; <em>Low</em> = minor noise or cosmetic issues.</p>
+</blockquote>
+<hr />
+<h2 id="comparison-with-baseline-2026-06-26-pn18-sncj-struct">Comparison with baseline (2026-06-26-pn18-sncj-struct)</h2>
+<p><em>Note: baseline covered 11 queries; this run adds Q21–Q26 (all TEST). Comparison below covers shared Q6–Q20 only.</em></p>
+<table>
+<thead>
+<tr>
+<th>Query</th>
+<th>Baseline latency</th>
+<th>This run latency</th>
+<th>Baseline zero-result</th>
+<th>This run zero-result</th>
+<th>Baseline multi-word</th>
+<th>This run multi-word</th>
+<th>Baseline dupes</th>
+<th>This run dupes</th>
+<th>Verdict</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Q6</td>
+<td>69s</td>
+<td><strong>33s</strong></td>
+<td>12% (4/32)</td>
+<td>27% (6/22)</td>
+<td>12/32</td>
+<td>11/22</td>
+<td>0</td>
+<td>0</td>
+<td>↑ Faster; zero-result↑ (fewer total lookups)</td>
+</tr>
+<tr>
+<td>Q8</td>
+<td>63s</td>
+<td><strong>49s</strong></td>
+<td>50% (5/10)</td>
+<td>33% (1/3)</td>
+<td>5/10</td>
+<td>2/3</td>
+<td>0</td>
+<td>0</td>
+<td>✅ Major — 3 lookups vs 10, ⚠→✅</td>
+</tr>
+<tr>
+<td>Q9</td>
+<td>41s</td>
+<td>42s</td>
+<td>25% (5/20)</td>
+<td>33% (8/24)</td>
+<td>16/20</td>
+<td>21/24</td>
+<td>0</td>
+<td>1</td>
+<td>↕ Mixed — more lookups, same verdict</td>
+</tr>
+<tr>
+<td>Q11</td>
+<td>34s</td>
+<td>33s</td>
+<td>40% (8/20)</td>
+<td>41% (5/12)</td>
+<td>11/20</td>
+<td>7/12</td>
+<td>1</td>
+<td>0</td>
+<td>↑ Slight — ❌→⚠; fewer lookups, vsearch helps</td>
+</tr>
+<tr>
+<td>Q14</td>
+<td>55s</td>
+<td>59s</td>
+<td>15% (3/20)</td>
+<td>13% (3/22)</td>
+<td>17/20</td>
+<td>12/22</td>
+<td>1</td>
+<td>0</td>
+<td>↑ Slight — fewer multi-word, dupe fixed</td>
+</tr>
+<tr>
+<td>Q15</td>
+<td>15s</td>
+<td>18s</td>
+<td>25% (1/4)</td>
+<td>0% (0/5)</td>
+<td>2/4</td>
+<td>2/5</td>
+<td>0</td>
+<td>0</td>
+<td>↔ Neutral — same verdict ⚠</td>
+</tr>
+<tr>
+<td>Q16</td>
+<td>22s</td>
+<td>24s</td>
+<td>25% (1/4)</td>
+<td>20% (1/5)</td>
+<td>2/4</td>
+<td>2/5</td>
+<td>0</td>
+<td>0</td>
+<td>↔ Neutral — same verdict ⚠</td>
+</tr>
+<tr>
+<td>Q17</td>
+<td>18s</td>
+<td>20s</td>
+<td>0% (0/3)</td>
+<td>0% (0/5)</td>
+<td>0/3</td>
+<td>0/5</td>
+<td>1</td>
+<td>2</td>
+<td>↔ Neutral — more dicts (cja+spjms), dupe worse</td>
+</tr>
+<tr>
+<td>Q18</td>
+<td>25s</td>
+<td><strong>23s</strong></td>
+<td>0% (0/1)</td>
+<td>33% (1/3)</td>
+<td>1/1</td>
+<td>3/3</td>
+<td>0</td>
+<td>0</td>
+<td>↔ Neutral — same verdict ✅</td>
+</tr>
+<tr>
+<td>Q19</td>
+<td>38s</td>
+<td>40s</td>
+<td>0% (0/3)</td>
+<td>0% (0/3)</td>
+<td>3/3</td>
+<td>3/3</td>
+<td>0</td>
+<td>0</td>
+<td>↔ Neutral — same verdict ✅ (already perfect in baseline)</td>
+</tr>
+<tr>
+<td>Q20</td>
+<td>26s</td>
+<td>29s</td>
+<td>15% (2/13)</td>
+<td>16% (2/12)</td>
+<td>3/13</td>
+<td>2/12</td>
+<td>0</td>
+<td>0</td>
+<td>↔ Neutral — same verdict ✅</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><em>Latency</em> is <code>latency_ms</code>/1000 from the DB — total LLM time for all rounds. Q6 is notably faster (33s vs 69s) despite similar lookup count — token volume lower because SNČJ structured entries are more compact in this run. Q8 is the standout improvement.</p>
+</blockquote>
+<h3 id="effect-of-pn22-horse-command-compound-headwords">Effect of PN22 (horse command compound headwords)</h3>
+<p>Q8 dropped from 10 lookups/4 rounds (⚠) to 3 lookups/2 rounds (✅). The model immediately used <code>(kůň) jeď!</code> → <code>jeď!</code> in ČJA, returned the correct entry, and expanded to 12+ phonological variants. Previous runs spent rounds on SNČJ phrase FTS that found nothing. PN22 is clearly effective.</p>
+<h3 id="effect-of-pn21-animal-sound-compound-headwords">Effect of PN21 (animal sound compound headwords)</h3>
+<p>Q19 was already ✅ in the baseline (1 round, 3 direct ČJA lookups). The previous fix (PN16b/PN17c) had already achieved this. Q18 continues using <code>(kráva) bučí</code> correctly. PN21 may be redundant with the existing PN16b instruction but causes no regressions.</p>
+<h3 id="effect-of-majka-ti-variant-expansion">Effect of majka <code>-ti</code> variant expansion</h3>
+<p>No direct evidence in this eval batch. The <code>-ti</code> expansion targets SSJČ queries for verbs. Q11 searches SSJČ but for etymology terms, not inflected forms. The animal sound queries use ČJA compound headwords directly. The fix is most relevant when the user asks for inflected verb forms that appear in SSJČ under archaic <code>-ti</code> infinitives — a common case in casual queries but not tested here explicitly.</p>
+<h3 id="effect-of-text_enriched-pre-computation">Effect of <code>text_enriched</code> pre-computation</h3>
+<p>Q21, Q25, Q26 all show ČJA entries with locality codes correctly substituted (e.g., Q25 answer: "tatíček — typické pro Holešovsko, Opavsko a Hlučínsko"). The pre-computation eliminates the on-the-fly <code>_substitute_localities()</code> call per result. No observable difference in answer quality vs. baseline (the substitution was already working before; this is a performance optimization).</p>
+<h3 id="effect-of-cja-embedding-restructure">Effect of ČJA embedding restructure</h3>
+<p>Not directly measurable from token/latency metrics. The restructure ensures semantic category text (section 2) appears within the first ~512 tokens of each ČJA embedding document. Q21 <code>vsearch "brambor vs zemák"</code> was not used (direct lookup found entries). Q14 vsearch hit <code>interjekce zvuky ptáků | cja</code> → 10 results including ČJA headwords not reachable by keyword. The restructure is a correctness fix for semantic search quality, most impactful for ČJA entries where section 2 is long.</p>
+<hr />
+<h2 id="proposed-prompt-changes">Proposed prompt changes</h2>
+<p>No new prompt changes proposed. The remaining issues (Q15/Q16 geography, Q09 SNČJ phrasemes, Q11 germanismus) require:
+- <strong>Q15/Q16</strong>: a <code>[SQLQUERY:]</code> tool, not a prompt fix — the model cannot filter locality codes without database access
+- <strong>Q09</strong>: additional prompt guidance to check SNČJ for phrasemes even in phraseme-focused queries
+- <strong>Q11</strong>: adding SNČJ FTS etymological marker search (<code>z něm.</code>, <code>z německého</code>) as an example</p>
+<h3 id="pn23-sncj-phraseme-search-instruction-targets-issue-3">PN23 — SNČJ phraseme search instruction <em>(targets Issue 3)</em></h3>
+<pre><code class="language-markdown">**Frazémy a idiomy:** Pro dotazy na frazémy nebo idiomy prohledej vždy SNČJ i ASSC.
+SNČJ obsahuje phraseme sekce v heslovém záznamu (označeny `●`). Klíčová hesla pro
+alkohol: `pít`, `chlastat`, `opilý`, `chlast`. Klíčová hesla pro čerta: `čert`.
+</code></pre>
+<p><strong>Expected effect:</strong> model searches SNČJ before exhausting budget on ASSC phrase FTS for Q9-type queries.</p>
+<h3 id="pn24-q11-germanismus-fts-strategy-targets-issue-4">PN24 — Q11 germanismus FTS strategy <em>(targets Issue 4)</em></h3>
+<pre><code class="language-markdown">**Germanismy v SNČJ:** Hesla s německým původem jsou v SNČJ označena zkratkami
+`z něm.` nebo `z německého` v poli strings_m. Správná strategie:
+`ftsearch &quot;z něm&quot; | sncj` → enumaruj nalezená hesla. Ftsearch `germanismus`
+nebo `německá přejímka` vrátí nulu — jsou to lingvistické termíny, ne označení v SNČJ.
+</code></pre>
+<p><strong>Expected effect:</strong> Q11 finds 8+ SNČJ entries with German etymology markers in first round.</p>
+<h2 id="implementation-priority">Implementation priority</h2>
+<table>
+<thead>
+<tr>
+<th>Change</th>
+<th>Effort</th>
+<th>Expected gain</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>PN23 — SNČJ phraseme search</td>
+<td>3 lines in prompts/system_dict.md</td>
+<td>Q9: from ⚠ to ✅ (SNČJ phrasemes discovered)</td>
+</tr>
+<tr>
+<td>PN24 — Q11 germanismus FTS</td>
+<td>4 lines in prompts/system_dict.md</td>
+<td>Q11: from ⚠ to ✅ (8+ germanisms vs 3)</td>
+</tr>
+<tr>
+<td>SQLQUERY tool for ČJA locality filter</td>
+<td>~100 lines new tool + prompt</td>
+<td>Q15/Q16: from ⚠ to ✅ (geographic precision)</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><em>Effort</em> is the edit size. <em>Expected gain</em> is the target metric and direction. PN23 and PN24 are low-effort, high-confidence prompt fixes. The SQLQUERY tool is a larger engineering investment but the only path to fixing Q15/Q16.</p>
+</blockquote></body></html>
