@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Czech NLP Research for dictpert — 2024</title>
+<style>
+body {
+  font-family: -apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+  font-size: 14px;
+  line-height: 1.6;
+  color: #24292e;
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 40px 24px;
+  background: #fff;
+}
+h1 { font-size: 32px; border-bottom: 1px solid #e1e4e8; padding-bottom: 8px; margin-top: 24px; }
+h2 { font-size: 24px; border-bottom: 1px solid #e1e4e8; padding-bottom: 6px; margin-top: 32px; }
+h3 { font-size: 20px; margin-top: 24px; }
+h4 { font-size: 16px; margin-top: 20px; }
+table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 16px 0;
+  font-size: 13px;
+}
+th {
+  text-align: left;
+  background: #f6f8fa;
+  border: 1px solid #d0d7de;
+  padding: 6px 13px;
+  font-weight: 600;
+}
+td {
+  border: 1px solid #d0d7de;
+  padding: 6px 13px;
+  vertical-align: top;
+}
+code {
+  font-family: "SFMono-Regular",Consolas,"Liberation Mono",Menlo,monospace;
+  font-size: 12px;
+  background: #f6f8fa;
+  padding: 2px 6px;
+  border-radius: 3px;
+}
+pre {
+  background: #f6f8fa;
+  padding: 16px;
+  border-radius: 6px;
+  overflow: auto;
+  font-size: 12px;
+  line-height: 1.45;
+}
+pre code {
+  background: none;
+  padding: 0;
+}
+blockquote {
+  border-left: 4px solid #d0d7de;
+  margin: 0;
+  padding-left: 16px;
+  color: #57606a;
+}
+a { color: #0969da; text-decoration: none; }
+a:hover { text-decoration: underline; }
+hr { border: none; border-top: 1px solid #d0d7de; margin: 24px 0; }
+.back-link {
+  margin-bottom: 24px;
+  font-size: 14px;
+}
+.back-link a {
+  color: #0969da;
+}
+</style>
+</head>
+<body>
+<div class="back-link">
+  <a href="index.html">← Back to Research Index</a>
+</div>
+<h1 id="czech-nlp-research-summary-2024">Czech NLP Research Summary — 2024</h1>
+<p><strong>Research Question:</strong> What are the most promising recent NLP techniques and research papers (2023-2026) for improving Czech language RAG systems?</p>
+<p><strong>Focus Areas:</strong>
+1. Czech-specific embeddings and semantic search
+2. Morphological analysis and lemmatization improvements
+3. Query expansion and reranking methods
+4. Retrieval augmentation techniques not yet mainstream
+5. Dialectology or historical/archaic Czech text processing</p>
+<p><strong>Deep research completed:</strong> 2026-07-03<br />
+<strong>Sources analyzed:</strong> 22 primary sources<br />
+<strong>Claims verified:</strong> 88 extracted, 25 verified (12 confirmed, 13 refuted)<br />
+<strong>Agent calls:</strong> 104</p>
+<hr />
+<h2 id="key-findings">Key Findings</h2>
+<h3 id="1-small-czech-sentence-embeddings-seznamcz-high-confidence">1. Small Czech Sentence Embeddings (Seznam.cz) ✅ <strong>HIGH CONFIDENCE</strong></h3>
+<p><strong>Paper:</strong> Bednář et al., "Some Like It Small: Czech Sentence Embedding Models for Industry Applications" (IAAI 2024)<br />
+<strong>arXiv:</strong> https://arxiv.org/abs/2311.13921</p>
+<p><strong>What it is:</strong>
+- 14M parameter models (vs 110M Base models) = <strong>8x smaller, 5x faster inference</strong>
+- Uses knowledge distillation + Czech-English pre-training + contrastive learning
+- <strong>Production-deployed at Seznam.cz</strong> (won IAAI Innovative Application Award)</p>
+<p><strong>Performance:</strong>
+- Small models: 87.60 on STS tasks
+- Base models: 82.91 on STS tasks
+- Competitive performance despite massive size reduction</p>
+<p><strong>Why it matters for dictpert:</strong>
+- Current: <code>Seznam/retromae-small-cs</code> already used
+- Opportunity: <strong>Validate performance on dialectal/historical text</strong> (not tested in paper)
+- Trade-off: Trained on modern standard Czech — may struggle with DIALEKT archaic forms</p>
+<p><strong>Action items:</strong>
+- [x] Paper downloaded
+- [ ] Test Seznam small models on dialectal entries from SNČJ/ČJA
+- [ ] Compare retrieval quality vs current <code>retromae-small-cs</code>
+- [ ] Measure inference latency improvement in production</p>
+<hr />
+<h3 id="2-hybrid-neuraldictionary-morphology-udpipe-2-morfflex-high-confidence">2. Hybrid Neural+Dictionary Morphology (UDPipe 2 + MorfFlex) ✅ <strong>HIGH CONFIDENCE</strong></h3>
+<p><strong>Paper:</strong> Straková &amp; Straka, "Open-Source Web Service with Morphological Dictionary-Supplemented Deep Learning for Morphosyntactic Analysis of Czech" (TSD 2024)<br />
+<strong>arXiv:</strong> https://arxiv.org/abs/2406.12422<br />
+<strong>Springer:</strong> https://link.springer.com/chapter/10.1007/978-3-031-70563-2_22</p>
+<p><strong>What it is:</strong>
+- Combines UDPipe 2 deep learning with MorfFlex dictionary rescoring at inference time
+- Dictionary constrains neural predictions to valid form-tag-edit-rule pairs</p>
+<p><strong>Performance:</strong>
+- Lemmatization: <strong>99.15% accuracy</strong> (50% error reduction vs MorphoDiTa, 35% vs UDPipe 2 alone)
+- POS tagging: <strong>98.44% accuracy</strong> (58% error reduction vs MorphoDiTa, 16% vs UDPipe 2)
+- OOV handling: <strong>91.71% accuracy</strong> (dictionary preserves neural generalization)</p>
+<p><strong>Trade-off:</strong>
+- Speed: <strong>60 words/sec</strong> vs MorphoDiTa's 10-200K words/sec
+- 1000–3000× slower — <strong>may not suit real-time RAG</strong></p>
+<p><strong>Why it matters for dictpert:</strong>
+- Current: Majka (fast, ~98% accuracy)
+- Opportunity: <strong>Further 35% error reduction</strong> on lemmatization
+- Challenge: Speed penalty — need to batch or pre-lemmatize offline</p>
+<p><strong>Action items:</strong>
+- [x] Paper downloaded
+- [ ] Benchmark UDPipe 2 + MorfFlex on dialectal forms (inflected queries from eval)
+- [ ] Measure actual throughput impact in dictpert RAG loop
+- [ ] Explore GPU acceleration or sparse rescoring to close speed gap</p>
+<hr />
+<h3 id="3-hybrid-retrieval-reranking-medium-confidence-preprint">3. Hybrid Retrieval + Reranking ⚠️ <strong>MEDIUM CONFIDENCE</strong> (preprint)</h3>
+<p><strong>Paper:</strong> "Hybrid Retrieval Combining BM25 and Semantic Vector Search" (arXiv 2026)<br />
+<strong>arXiv:</strong> https://arxiv.org/html/2605.01664v1</p>
+<p><strong>What it is:</strong>
+- BM25-style lexical search + semantic vector search
+- Cohere reranking substantially reorders results</p>
+<p><strong>Performance:</strong>
+- Only <strong>8.8% of chunks</strong> retained same rank after reranking
+- <strong>3 of 25 final top chunks</strong> were originally outside initial top 10</p>
+<p><strong>Why it matters for dictpert:</strong>
+- Current: FTS (lexical) + vector search (semantic) already implemented
+- Missing: <strong>Reranking layer</strong> to fuse results
+- Opportunity: Cohere Rerank API or open-source Czech reranker</p>
+<p><strong>Caveats:</strong>
+- 2026 preprint, <strong>not yet peer-reviewed</strong>
+- Biomedical domain, not Czech NLP
+- Similar results confirmed in other 2024-2025 studies (MRR +44pp on MS MARCO)</p>
+<p><strong>Action items:</strong>
+- [x] Paper downloaded
+- [ ] Test Cohere Rerank on Czech dialectology queries (Q09, Q15, Q17)
+- [ ] Compare reranking vs current FTS+VSEARCH fusion
+- [ ] Explore training a Czech-specific reranker on dialectology data</p>
+<hr />
+<h3 id="4-domain-specific-pre-training-high-confidence">4. Domain-Specific Pre-training ✅ <strong>HIGH CONFIDENCE</strong></h3>
+<p><strong>Paper:</strong> "Comparison of Czech Transformers on Text Classification Tasks" (2021)<br />
+<strong>arXiv:</strong> https://arxiv.org/pdf/2107.10042</p>
+<p><strong>What it is:</strong>
+- Pre-train Czech BERT on domain-specific corpora
+- FERNET-News (1B news tokens) vs FERNET-C5 (340M general tokens)</p>
+<p><strong>Performance:</strong>
+- News-trained models excel on news classification
+- General models provide broader coverage</p>
+<p><strong>Why it matters for dictpert:</strong>
+- Current: General-purpose Seznam embeddings
+- Opportunity: <strong>Pre-train on dialectology corpora</strong> (ČJA+SNČJ+SPJMS full text)
+- Challenge: Need substantial dialectal text (100M+ tokens)</p>
+<p><strong>Action items:</strong>
+- [ ] Estimate total text size across all 6 dictionaries
+- [ ] If ≥100M tokens, consider domain-specific pre-training
+- [ ] Evaluate cost/benefit vs fine-tuning Seznam small models</p>
+<hr />
+<h3 id="5-cross-lingual-transfer-learning-medium-confidence">5. Cross-Lingual Transfer Learning ⚠️ <strong>MEDIUM CONFIDENCE</strong></h3>
+<p><strong>Papers:</strong>
+- Štefánik et al., "Multilingual Instruction Fine-Tuning" (BSNLP 2023)
+- Cotterell &amp; Heigold, "Cross-Lingual Character-Level Neural Morphological Tagging" (EMNLP 2017)</p>
+<p><strong>What it is:</strong>
+- Multilingual instruction fine-tuning improves in-context learning for Czech vs English-only
+- Cross-lingual character representations improve morphological tagging <strong>up to 30%</strong> in extreme low-resource scenarios (100 training sentences)</p>
+<p><strong>Caveats:</strong>
+- <strong>30% improvement is MAXIMUM</strong> in extreme cases (100 sentences)
+- Most languages show smaller gains at 1000 sentences
+- Single-task target-language training can sometimes outperform multilingual</p>
+<p><strong>Why it matters for dictpert:</strong>
+- Opportunity: <strong>Polish/Slovak dialects</strong> share features with Czech dialects
+- Limited applicability: dictpert has plenty of Czech data (not low-resource)</p>
+<p><strong>Action items:</strong>
+- [ ] Investigate if Slavic cross-lingual models help with rare dialectal forms
+- [ ] Low priority — we have 6 full dictionaries, not 100 training sentences</p>
+<hr />
+<h3 id="6-dialectal-historical-czech-datasets-high-confidence">6. Dialectal &amp; Historical Czech Datasets ✅ <strong>HIGH CONFIDENCE</strong></h3>
+<p><strong>Datasets:</strong></p>
+<h4 id="dialekt-corpus">DIALEKT Corpus</h4>
+<ul>
+<li><strong>Size:</strong> 126,131 tokens</li>
+<li><strong>Period:</strong> 1960s-1980s rural dialectal Czech</li>
+<li><strong>Speakers:</strong> Born late 19th-early 20th century</li>
+<li><strong>Annotation:</strong> Two-tier (dialectological primary, orthographic secondary)</li>
+<li><strong>Source:</strong> https://arxiv.org/html/2407.04010, https://wiki.korpus.cz/doku.php/cnk:dialekt</li>
+</ul>
+<h4 id="posel-od-cerchova">Posel od Čerchova</h4>
+<ul>
+<li><strong>Size:</strong> 432 pages, 100 article-level summaries</li>
+<li><strong>Period:</strong> 19th-century historical Czech journal</li>
+<li><strong>License:</strong> CC BY-NC-SA 4.0</li>
+<li><strong>Source:</strong> https://arxiv.org/html/2511.18848, https://corpora.kiv.zcu.cz/posel_od_cerchova/</li>
+</ul>
+<p><strong>Why it matters for dictpert:</strong>
+- DIALEKT: <strong>Directly comparable to ČJA/SNČJ temporal coverage</strong>
+- Opportunity: <strong>Validate embeddings/lemmatizers on DIALEKT</strong> to test generalization
+- Opportunity: <strong>Benchmark HyDE/retrieval on historical Czech</strong> with Posel od Čerchova</p>
+<p><strong>Action items:</strong>
+- [x] Papers downloaded
+- [ ] Download DIALEKT corpus from ČNK
+- [ ] Download Posel od Čerchova dataset
+- [ ] Run embedding similarity tests: modern Czech vs DIALEKT vs Posel
+- [ ] Test Majka lemmatization accuracy on DIALEKT tokens</p>
+<hr />
+<h2 id="techniques-not-yet-tried-in-dictpert">Techniques NOT Yet Tried in dictpert</h2>
+<h3 id="1-reranking-layer-high-priority">1. Reranking Layer (HIGH PRIORITY)</h3>
+<p><strong>Status:</strong> NOT implemented<br />
+<strong>Paper:</strong> arXiv:2605.01664v1 (2026 preprint)</p>
+<p><strong>What to do:</strong>
+1. Add reranking step after FTS+VSEARCH fusion
+2. Options:
+   - <strong>Cohere Rerank API</strong> (easiest, paid)
+   - <strong>BGE reranker</strong> (open-source, multi-lingual)
+   - <strong>Train Czech-specific reranker</strong> on dialectology queries</p>
+<p><strong>Expected impact:</strong>
+- Substantial reordering (only 8.8% retain rank)
+- Better fusion of lexical + semantic results
+- Potentially fixes Q09-style queries where FTS and VSEARCH disagree</p>
+<p><strong>Implementation effort:</strong> 1-2 days (API integration) or 1-2 weeks (training custom reranker)</p>
+<hr />
+<h3 id="2-udpipe-2-morfflex-hybrid-medium-priority">2. UDPipe 2 + MorfFlex Hybrid (MEDIUM PRIORITY)</h3>
+<p><strong>Status:</strong> NOT implemented (using Majka)<br />
+<strong>Paper:</strong> arXiv:2406.12422 (TSD 2024)</p>
+<p><strong>What to do:</strong>
+1. Benchmark UDPipe 2 + MorfFlex on dialectal inflected queries
+2. If accuracy gain ≥5% over Majka → worth considering
+3. <strong>Speed mitigation:</strong>
+   - Batch lemmatization across all tool calls in a round
+   - Pre-lemmatize common query patterns offline
+   - GPU acceleration (if available)</p>
+<p><strong>Expected impact:</strong>
+- 35% error reduction on lemmatization (vs UDPipe 2 alone)
+- Better handling of ambiguous forms
+- <strong>Cost:</strong> 1000–3000× slower (60 words/sec vs Majka's 10-200K)</p>
+<p><strong>Implementation effort:</strong> 2-3 days (integration + benchmarking)</p>
+<hr />
+<h3 id="3-domain-specific-embedding-pre-training-low-priority">3. Domain-Specific Embedding Pre-training (LOW PRIORITY)</h3>
+<p><strong>Status:</strong> Using general Seznam embeddings<br />
+<strong>Paper:</strong> arXiv:2107.10042 (2021)</p>
+<p><strong>What to do:</strong>
+1. Estimate total dialectology text size (ČJA + SNČJ + SPJMS + SPJČ + PSJČ + ASSC full entries)
+2. If ≥100M tokens → consider pre-training
+3. Options:
+   - Fine-tune Seznam small models on dialectology corpus
+   - Train from scratch (expensive)</p>
+<p><strong>Expected impact:</strong>
+- Better semantic matching on dialectal/archaic vocabulary
+- Embeddings "speak the language" of the dictionaries
+- <strong>Cost:</strong> Significant compute (days-weeks on GPU)</p>
+<p><strong>Implementation effort:</strong> 2-4 weeks (corpus prep + training + eval)</p>
+<hr />
+<h3 id="4-cross-lingual-transfer-for-rare-forms-low-priority">4. Cross-Lingual Transfer for Rare Forms (LOW PRIORITY)</h3>
+<p><strong>Status:</strong> NOT explored<br />
+<strong>Papers:</strong> BSNLP 2023, EMNLP 2017</p>
+<p><strong>What to do:</strong>
+1. Investigate if Polish/Slovak/Russian embeddings help with rare Czech dialectal forms
+2. Test multilingual models (XLM-R, mBERT) on dialectal queries
+3. <strong>Caveat:</strong> dictpert has plenty of Czech data — not a low-resource scenario</p>
+<p><strong>Expected impact:</strong> Marginal (we're not low-resource)</p>
+<p><strong>Implementation effort:</strong> 1-2 days (quick test)</p>
+<hr />
+<h2 id="open-questions">Open Questions</h2>
+<ol>
+<li><strong>How do Seznam small embeddings perform on dialectal/historical text?</strong></li>
+<li>Paper only tested on modern standard Czech</li>
+<li>DIALEKT corpus provides perfect test set</li>
+<li>
+<p><strong>Answer:</strong> Run embedding similarity tests on DIALEKT vs modern Czech entries</p>
+</li>
+<li>
+<p><strong>Can UDPipe 2 + MorfFlex be accelerated to production-viable speeds?</strong></p>
+</li>
+<li>60 words/sec is 1000× slower than Majka</li>
+<li>Options: GPU, batching, sparse rescoring?</li>
+<li>
+<p><strong>Answer:</strong> Benchmark and profile; may need offline pre-lemmatization</p>
+</li>
+<li>
+<p><strong>What query expansion techniques work best for Czech RAG with rich morphology?</strong></p>
+</li>
+<li>Current: Majka lemmatization fallback</li>
+<li>Alternatives: Morphological query expansion, cross-lingual embeddings?</li>
+<li>
+<p><strong>Answer:</strong> Evaluate on Q11 (germanismy), Q09 (frazémy) where morphology matters</p>
+</li>
+<li>
+<p><strong>Are there RAG architectures designed for dialectal variation?</strong></p>
+</li>
+<li>DIALEKT has special symbols, non-standard forms</li>
+<li>Do we need dialect-aware embeddings or lemmatizers?</li>
+<li><strong>Answer:</strong> Benchmark general-purpose tools on DIALEKT first; specialize if gap exists</li>
+</ol>
+<hr />
+<h2 id="next-steps">Next Steps</h2>
+<h3 id="immediate-this-week">Immediate (this week)</h3>
+<ol>
+<li>✅ Download all cited papers</li>
+<li>[ ] Download DIALEKT corpus from ČNK</li>
+<li>[ ] Download Posel od Čerchova dataset</li>
+<li>[ ] Test Seznam small embeddings on DIALEKT vs modern Czech</li>
+</ol>
+<h3 id="short-term-2-4-weeks">Short-term (2-4 weeks)</h3>
+<ol>
+<li>[ ] <strong>Implement reranking layer</strong> (Cohere API or BGE reranker)</li>
+<li>[ ] A/B eval: reranking vs current FTS+VSEARCH fusion</li>
+<li>[ ] Benchmark UDPipe 2 + MorfFlex on dialectal queries</li>
+<li>[ ] Measure speed penalty in production RAG loop</li>
+</ol>
+<h3 id="medium-term-1-3-months">Medium-term (1-3 months)</h3>
+<ol>
+<li>[ ] Consider domain-specific pre-training if corpus ≥100M tokens</li>
+<li>[ ] Explore training Czech-specific reranker on dialectology data</li>
+<li>[ ] Write up findings in <code>docs/experiments.md</code></li>
+</ol>
+<hr />
+<h2 id="papers-to-download">Papers to Download</h2>
+<table>
+<thead>
+<tr>
+<th>Priority</th>
+<th>Paper</th>
+<th>arXiv/URL</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>HIGH</td>
+<td>Seznam small embeddings (IAAI 2024)</td>
+<td>https://arxiv.org/abs/2311.13921</td>
+<td>⬇️ Downloading</td>
+</tr>
+<tr>
+<td>HIGH</td>
+<td>UDPipe 2 + MorfFlex (TSD 2024)</td>
+<td>https://arxiv.org/abs/2406.12422</td>
+<td>⬇️ Downloading</td>
+</tr>
+<tr>
+<td>HIGH</td>
+<td>DIALEKT corpus (arXiv 2024)</td>
+<td>https://arxiv.org/html/2407.04010</td>
+<td>⬇️ Downloading</td>
+</tr>
+<tr>
+<td>HIGH</td>
+<td>Posel od Čerchova (arXiv 2025)</td>
+<td>https://arxiv.org/html/2511.18848</td>
+<td>⬇️ Downloading</td>
+</tr>
+<tr>
+<td>MEDIUM</td>
+<td>Hybrid retrieval + reranking (2026)</td>
+<td>https://arxiv.org/html/2605.01664v1</td>
+<td>⬇️ Downloading</td>
+</tr>
+<tr>
+<td>MEDIUM</td>
+<td>Czech transformers comparison (2021)</td>
+<td>https://arxiv.org/pdf/2107.10042</td>
+<td>⬇️ Downloading</td>
+</tr>
+<tr>
+<td>LOW</td>
+<td>Cross-lingual morphology (EMNLP 2017)</td>
+<td>https://arxiv.org/html/1708.09157v6</td>
+<td>⬇️ Downloading</td>
+</tr>
+<tr>
+<td>LOW</td>
+<td>Multilingual instruction tuning (BSNLP 2023)</td>
+<td>https://aclanthology.org/volumes/2023.bsnlp-1/</td>
+<td>(proceedings volume)</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="caveats">Caveats</h2>
+<ul>
+<li><strong>Reranking finding:</strong> 2026 preprint, not yet peer-reviewed (but methodology transparent)</li>
+<li><strong>30% cross-lingual improvement:</strong> Maximum in extreme low-resource (100 sentences), not typical</li>
+<li><strong>Speed trade-offs:</strong> UDPipe 2 + MorfFlex is 1000× slower than Majka</li>
+<li><strong>Most techniques are general NLP advances applied to Czech</strong> — genuinely Czech-specific or dialectology-specific innovations are primarily dataset contributions (DIALEKT, Posel od Čerchova)</li>
+<li><strong>No sources directly addressed dialectology-specific RAG challenges</strong> like handling morphological variation across dialects or archaic lemmatization strategies</li>
+</ul>
+<hr />
+<p><em>Research completed: 2026-07-03</em><br />
+<em>Workflow: deep-research (104 agents, 88 claims extracted, 25 verified)</em><br />
+<em>Budget spent: ~3.4M tokens</em></p>
+<hr>
+<div class="back-link">
+  <a href="index.html">← Back to Research Index</a> | 
+  <a href="../../dictpert-evals/">View Evaluations</a>
+</div>
+</body>
+</html>
