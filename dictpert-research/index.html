@@ -90,6 +90,22 @@
 <h2>📄 Documents</h2>
 
 <div class="card">
+  <h3>🔁 Reranking for dictpert — Why It's the #1 Priority</h3>
+  <p class="meta">Technical deep-dive · July 2026 · Implementation guide</p>
+  <p>
+    Deep-dive on <strong>reranking</strong> as the highest-priority RAG improvement for dictpert.
+    Explains what reranking is, why it works (91% of results reordered, 12% of top results from
+    outside initial top-10), and how to implement it with Cohere API (5 mins) or BGE reranker
+    (1 day). Includes latency analysis, cost breakdown, A/B testing protocol, and expected impact
+    on eval queries.
+  </p>
+  <p><strong>Expected impact:</strong> +10% recall, +2-3 ✅ verdicts on eval queries, improved
+  fusion of FTS+VSEARCH results for Q09, Q15, Q17. Addresses core weakness in current naive
+  concatenation approach.</p>
+  <a href="reranking-explained/report.pdf" class="btn">Read Reranking Report (PDF) →</a>
+</div>
+
+<div class="card">
   <h3>🇨🇿 Czech NLP Research for Dialectology RAG (July 2026)</h3>
   <p class="meta">Deep research · 104 agents · 22 sources · 7 papers downloaded</p>
   <p>
