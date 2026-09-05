@@ -79,12 +79,12 @@
 
 <p class="meta">
   <strong>Project:</strong> <a href="https://dictpert.hmpf.cz">Dictpert — Czech Dialectology AI Assistant</a><br>
-  <strong>Research Period:</strong> June–July 2026<br>
-  <strong>Status:</strong> Phase 1 complete, Czech NLP literature survey complete
+  <strong>Research Period:</strong> June 2026 – present<br>
+  <strong>Status:</strong> Phase 1 (Self-RAG, HyDE, Query Rewriting) implemented and shipped · Czech NLP literature survey complete · current work: answer-construction modes (Plan + Rethink) and cheap/free model evaluation
 </p>
 
 <div class="highlight">
-  <strong>🎯 Goal:</strong> Improve answer quality from <strong>13/17 queries passing (76%)</strong> to <strong>15-16/17 (88-94%)</strong> through state-of-the-art RAG techniques from 2024-2026 research literature.
+  <strong>🎯 Goal:</strong> Improve answer quality from <strong>13/17 queries passing (76%)</strong> to <strong>15-16/17 (88-94%)</strong> through state-of-the-art RAG techniques from 2024-2026 research literature. All three Phase 1 techniques below have since been implemented and validated in production evals.
 </div>
 
 <h2>📄 Documents</h2>
@@ -147,38 +147,83 @@
   <a href="implementation-design.html" class="btn">Read Implementation Design →</a>
 </div>
 
-<h2>🎯 Phase 1 Techniques (Ready to Implement)</h2>
+<h2>✅ Phase 1 Techniques — Shipped</h2>
+
+<p>All three originally-proposed Phase 1 techniques are now implemented, live, and validated by production evals — this table has moved from a proposal to a status report.</p>
 
 <table style="width: 100%; border-collapse: collapse; margin: 16px 0;">
   <thead>
     <tr style="background: #f6f8fa;">
       <th style="padding: 8px; border: 1px solid #e1e4e8; text-align: left;">Technique</th>
-      <th style="padding: 8px; border: 1px solid #e1e4e8; text-align: left;">Effort</th>
-      <th style="padding: 8px; border: 1px solid #e1e4e8; text-align: left;">Impact</th>
+      <th style="padding: 8px; border: 1px solid #e1e4e8; text-align: left;">Status</th>
       <th style="padding: 8px; border: 1px solid #e1e4e8; text-align: left;">Target Problem</th>
+      <th style="padding: 8px; border: 1px solid #e1e4e8; text-align: left;">Result</th>
     </tr>
   </thead>
   <tbody>
     <tr>
       <td style="padding: 8px; border: 1px solid #e1e4e8;"><strong>Self-RAG Critique</strong></td>
-      <td style="padding: 8px; border: 1px solid #e1e4e8;">Low (prompt)</td>
-      <td style="padding: 8px; border: 1px solid #e1e4e8;">High</td>
+      <td style="padding: 8px; border: 1px solid #e1e4e8;">✅ Shipped 2026-06-29</td>
       <td style="padding: 8px; border: 1px solid #e1e4e8;">Citation hallucination</td>
+      <td style="padding: 8px; border: 1px solid #e1e4e8;">Zero leakage across all validation queries</td>
     </tr>
     <tr>
       <td style="padding: 8px; border: 1px solid #e1e4e8;"><strong>HyDE Embeddings</strong></td>
-      <td style="padding: 8px; border: 1px solid #e1e4e8;">Low (1 day)</td>
-      <td style="padding: 8px; border: 1px solid #e1e4e8;">High</td>
+      <td style="padding: 8px; border: 1px solid #e1e4e8;">✅ Shipped 2026-07-12</td>
       <td style="padding: 8px; border: 1px solid #e1e4e8;">Vocabulary mismatch (Q14/Q15)</td>
+      <td style="padding: 8px; border: 1px solid #e1e4e8;">+0.15–0.17 cosine similarity (3× success threshold)</td>
     </tr>
     <tr>
-      <td style="padding: 8px; border: 1px solid #e1e4e8;"><strong>Query Rewriting</strong></td>
-      <td style="padding: 8px; border: 1px solid #e1e4e8;">Low (1 day)</td>
-      <td style="padding: 8px; border: 1px solid #e1e4e8;">High</td>
+      <td style="padding: 8px; border: 1px solid #e1e4e8;"><strong>Query Rewriting (Query2Doc)</strong></td>
+      <td style="padding: 8px; border: 1px solid #e1e4e8;">✅ Shipped 2026-07-13</td>
       <td style="padding: 8px; border: 1px solid #e1e4e8;">FTS recall failures</td>
+      <td style="padding: 8px; border: 1px solid #e1e4e8;">Auto-expands zero-result FTS queries via LLM-generated synonyms</td>
     </tr>
   </tbody>
 </table>
+
+<h2>🆕 Latest: Answer-Construction Modes + Cheap Model Search (September 2026)</h2>
+
+<div class="card">
+  <h3>🧭 Plan Mode &amp; Rethink Mode</h3>
+  <p class="meta">Design + implementation + eval · September 2026</p>
+  <p>
+    Two new sidebar-selectable dict-mode variants targeting a strategy/coverage failure mode
+    found in eval: the model sometimes narrows its search too early or gives up before
+    covering all relevant dictionaries. <strong>Plan mode</strong> forces an explicit upfront
+    search strategy (a structured <code>plan</code> tool call) before any lookups, with
+    code-level tracking that nudges the model if it skips a dictionary it planned to check.
+    <strong>Rethink mode</strong> lets the model self-assess a draft answer as incomplete and
+    request additional search rounds (bounded, so it can't loop forever) instead of settling
+    for a thin answer.
+  </p>
+  <p><strong>Result:</strong> validated on a 33-run batch (11 queries × baseline/plan/rethink) —
+  zero-result rate improved <strong>8% → 3% (plan) → 1% (rethink)</strong>, generalizing across
+  the whole query set rather than one favorable case. On the germanism-search query
+  specifically, rethink mode nearly tripled the number of confirmed answers found (14 vs. 5
+  baseline) by twice recognizing its own answer was thin and asking to continue.</p>
+  <a href="../dictpert-evals/2026-09-05-gemma4-full/report.pdf" class="btn">Read Full Batch Eval Report (PDF) →</a>
+</div>
+
+<div class="card">
+  <h3>💸 Finding a cheap/free model for evals</h3>
+  <p class="meta">Provider survey · September 2026</p>
+  <p>
+    Every prior eval ran on Anthropic's claude-haiku-4-5, which is reliable but not free.
+    Surveyed OpenCode.ai, Hetzner, and OpenRouter for a model cheap enough to run much larger
+    eval batches — the constraint being that dictpert's tool-calling loop needs full
+    <code>tool_choice</code> support (<code>required</code>/<code>none</code>/<code>auto</code>),
+    which rules out several otherwise-promising free models that only support
+    <code>"auto"</code>.
+  </p>
+  <p><strong>Result:</strong> <code>google/gemma-4-31b-it</code> via OpenRouter (the paid, non-free
+  tier — the free tier is rate-limited far below dictpert's per-query token usage) turned out to
+  be the cheapest fully-compatible option at $0.09/$0.34 per 1M tokens — a full 33-run eval batch
+  cost $0.27 total, roughly 15-20× cheaper than the same batch would cost on Anthropic, with zero
+  errors and zero leakage. Also found and fixed a compatibility bug affecting Qwen's newer
+  model generation (3.7+): they default to a "thinking mode" that rejects forced tool-calling —
+  fixable with a documented API parameter once traced to the model's own documentation.</p>
+</div>
 
 <h2>📖 Key Research Papers</h2>
 
@@ -195,13 +240,13 @@
 <ul>
   <li><a href="../dictpert-evals/">Evaluation Reports</a> — Full eval history with pass/fail metrics</li>
   <li><a href="https://dictpert.hmpf.cz">Dictpert Live Demo</a> — Try the current system</li>
-  <li><a href="https://github.com/yourusername/dictpert">GitHub Repository</a> — Source code</li>
+  <li><a href="https://github.com/dialektologie-brno/dictpert">GitHub Repository</a> — Source code</li>
 </ul>
 
 <hr style="margin: 48px 0; border: none; border-top: 1px solid #e1e4e8;">
 
 <footer style="text-align: center; color: #57606a; font-size: 12px;">
-  <p>Research conducted June 2026 | <a href="https://martinpovolny.github.io">Martin Povolný</a></p>
+  <p>Research conducted June–September 2026 | <a href="https://martinpovolny.github.io">Martin Povolný</a></p>
 </footer>
 
 </body>
