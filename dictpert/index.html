@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dictpert — Czech Dialectology AI Assistant</title>
+<style>
+  body {
+    font-family: -apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+    font-size: 14px;
+    line-height: 1.6;
+    color: #24292e;
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 40px 24px;
+    background: #fff;
+  }
+  h1 {
+    font-size: 32px;
+    border-bottom: 2px solid #0969da;
+    padding-bottom: 12px;
+    margin-bottom: 24px;
+  }
+  h2 {
+    font-size: 20px;
+    margin-top: 32px;
+    border-bottom: 1px solid #e1e4e8;
+    padding-bottom: 6px;
+  }
+  .card {
+    border: 1px solid #e1e4e8;
+    border-radius: 6px;
+    padding: 20px;
+    margin: 16px 0;
+    background: #f6f8fa;
+  }
+  .card h3 {
+    margin-top: 0;
+    font-size: 18px;
+  }
+  .card p {
+    margin: 8px 0;
+  }
+  .meta {
+    color: #57606a;
+    font-size: 13px;
+  }
+  a {
+    color: #0969da;
+    text-decoration: none;
+  }
+  a:hover {
+    text-decoration: underline;
+  }
+  .btn {
+    display: inline-block;
+    background: #0969da;
+    color: white;
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-weight: 600;
+    margin-top: 8px;
+  }
+  .btn:hover {
+    background: #0550ae;
+    text-decoration: none;
+  }
+  .highlight {
+    background: #fff8dc;
+    border-left: 4px solid #fb8500;
+    padding: 12px;
+    margin: 16px 0;
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 16px;
+    margin: 16px 0;
+  }
+  .grid .card {
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+  }
+  .grid .card p {
+    flex: 1;
+  }
+  .stat {
+    display: inline-block;
+    margin: 4px 16px 4px 0;
+  }
+  .stat strong {
+    display: block;
+    font-size: 22px;
+    color: #0969da;
+  }
+  .stat span {
+    color: #57606a;
+    font-size: 12px;
+  }
+</style>
+</head>
+<body>
+
+<h1>🗣️ Dictpert: Czech Dialectology AI Assistant</h1>
+
+<p class="meta">
+  <strong>What it is:</strong> An LLM chat assistant that answers questions about Czech dialects
+  and regional vocabulary by consulting six dictionary and corpus sources — grounding every
+  claim in retrieved data rather than the model's own (unreliable) training knowledge of
+  dialectology.<br>
+  <strong>Status:</strong> Live, actively developed since June 2026
+</p>
+
+<div class="highlight">
+  <strong>🎯 Core problem:</strong> general-purpose LLMs hallucinate dialectal forms and
+  geographic distributions with total confidence — Czech dialectology is too niche and
+  regionally fragmented to be reliably in their training data. Dictpert instead searches
+  real dictionary databases per query and cites exactly what it found.
+</div>
+
+<div>
+  <div class="stat"><strong>6</strong><span>dictionary/corpus sources</span></div>
+  <div class="stat"><strong>3</strong><span>answer modes (direct / dict / vector RAG)</span></div>
+  <div class="stat"><strong>$0.27</strong><span>cheapest full 33-run eval batch</span></div>
+</div>
+
+<h2>Explore</h2>
+
+<div class="grid">
+  <div class="card">
+    <h3>💬 Live Demo</h3>
+    <p>Try the assistant yourself — ask a question about Czech dialect vocabulary,
+    phraseology, or regional variation.</p>
+    <a href="https://dictpert.hmpf.cz" class="btn">Open Dictpert →</a>
+  </div>
+
+  <div class="card">
+    <h3>🔬 Research</h3>
+    <p>Design docs and literature review behind the retrieval techniques that ground
+    the assistant's answers — Self-RAG, HyDE, reranking, and the latest work on
+    answer-construction modes.</p>
+    <a href="../dictpert-research/" class="btn">Read the Research →</a>
+  </div>
+
+  <div class="card">
+    <h3>📊 Evaluation Reports</h3>
+    <p>Full eval history — per-query quality verdicts, cost breakdowns, and
+    before/after comparisons for every prompt or architecture change.</p>
+    <a href="../dictpert-evals/" class="btn">Browse Eval Reports →</a>
+  </div>
+
+  <div class="card">
+    <h3>💻 Source Code</h3>
+    <p>Streamlit app, dictionary backends, prompt files, and eval tooling —
+    all open on GitHub.</p>
+    <a href="https://github.com/dialektologie-brno/dictpert" class="btn">View on GitHub →</a>
+  </div>
+</div>
+
+<h2>How it works</h2>
+
+<p>
+  Three answer modes, selectable per conversation:
+</p>
+
+<ul>
+  <li><strong>Přímá odpověď (Direct)</strong> — a single streaming LLM call, no retrieval. Fast, but relies entirely on the model's own knowledge.</li>
+  <li><strong>Se slovníky (Dictionary-augmented)</strong> — the model calls <code>lookup</code>/<code>ftsearch</code>/<code>vsearch</code> tools against the real dictionary databases across up to several rounds, then a post-loop pass verifies every citation traces back to an actual retrieved result. Optional <strong>Plan</strong> and <strong>Rethink</strong> modes let the model state a search strategy upfront or ask for more search when its own draft answer looks thin.</li>
+  <li><strong>Vektorový RAG</strong> — semantic search pre-fetches relevant entries in one pass, for a faster single-call answer over the whole indexed corpus.</li>
+</ul>
+
+<p>
+  Six sources are searchable: <strong>ČJA</strong> (Český jazykový atlas — geographic
+  distribution of dialect forms), <strong>SNČJ</strong> (Slovník nářečí českého jazyka —
+  alphabetical dialect dictionary), <strong>SPJMS</strong>/<strong>SPJČ</strong> (toponym
+  dictionaries for Moravia/Silesia and Bohemia), <strong>PSJČ</strong> (historical standard
+  Czech), and <strong>ASSC</strong> (contemporary standard Czech, for etymology and normative
+  context).
+</p>
+
+<h2>Presentations</h2>
+
+<ul>
+  <li><a href="../presentations/dictpert-methods-2026-07-01/presentation.html">RAG Methods Deep Dive</a> (2026-07-01)</li>
+  <li><a href="../presentations/dictpert-2026-06-21/">RAG-powered Dictionary Assistant</a> (2026-06-29)</li>
+</ul>
+
+<hr style="margin: 48px 0; border: none; border-top: 1px solid #e1e4e8;">
+
+<footer style="text-align: center; color: #57606a; font-size: 12px;">
+  <p><a href="https://martinpovolny.github.io">Martin Povolný</a></p>
+</footer>
+
+</body>
+</html>
