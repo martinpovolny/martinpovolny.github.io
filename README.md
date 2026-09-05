@@ -1,5 +1,6 @@
 ## Presentations
 
+- [**Debugging Production Issues with Evidence**](presentations/debugging-production-2026-09-05/) (2026-09-05)
 - [**Let's Chat Agentic & Knowledge Sharing**](presentations/agentic-friday-2026-07-18/) (2026-07-18)
 - [**Cost Event Consumer** — Demo](presentations/cost-consumer-2026-07-15/) (2026-07-15)
 - [**Cost Event Consumer** — Status Update](presentations/cost-consumer-2026-07-07/) (2026-07-07)

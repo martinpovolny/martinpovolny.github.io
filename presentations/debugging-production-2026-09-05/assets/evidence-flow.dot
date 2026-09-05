@@ -1,0 +1,12 @@
+digraph evidence_flow {
+  graph [rankdir=LR, bgcolor="transparent", pad="0.18", nodesep="0.35", ranksep="0.55"];
+  node [shape=box, style="rounded,filled", color="#2c6fad", fillcolor="#f0f4f8", fontname="Arial", fontsize=16, margin="0.20,0.12"];
+  edge [color="#2c6fad", penwidth=2, arrowsize=0.75];
+  glitchtip [label="GlitchTip\nSymptom + timestamp"];
+  kubernetes [label="Kubernetes\nProcess state"];
+  kibana [label="Kibana\nApplication sequence"];
+  rds [label="RDS CloudWatch\nDatabase evidence"];
+  plan [label="Gabi + PEV2\nQuery hypothesis"];
+  finding [label="Evidence-backed\nfinding", fillcolor="#e7f5ee", color="#2a6f5b"];
+  glitchtip -> kubernetes -> kibana -> rds -> plan -> finding;
+}
