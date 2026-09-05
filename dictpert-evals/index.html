@@ -63,6 +63,19 @@ layout: null
     <tr>
       <td>2026-09-05</td>
       <td>
+        <a href="2026-09-05-qwen38-full/report.pdf">Plan + Rethink Modes — Full Batch (qwen3.8-flash) — model rejected</a><br>
+        <span style="color:#586069">Same 33-run batch on qwen3.8-flash via OpenCode.ai · 7/33 runs failed (21%: content-moderation false positives + unexplained silent failures) · zero-result rate still improved in the same direction as gemma-4 (14%→10%→5%), confirming the mechanism generalizes, but the failure rate rules this model out — see comparison in the report</span>
+      </td>
+      <td class="verdict">
+        <strong>not scored — see failure-rate finding</strong>
+      </td>
+      <td class="verdict">—</td>
+      <td class="verdict">—</td>
+      <td>$0.00*</td>
+    </tr>
+    <tr>
+      <td>2026-09-05</td>
+      <td>
         <a href="2026-09-05-gemma4-full/report.pdf">Plan + Rethink Modes — Full Batch (google/gemma-4-31b-it)</a><br>
         <span style="color:#586069">33 runs (11 queries × baseline/plan/rethink) on a $0.09/$0.34-per-1M model via OpenRouter · $0.27 total cost, zero errors/leakage · zero-result rate 8% → 3% (plan) → 1% (rethink), generalized across the full query set · verdicts below are a zero-result/citation-presence proxy for the rethink condition, not full manual grading — see report for detail</span>
       </td>
