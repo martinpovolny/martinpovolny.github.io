@@ -7,11 +7,12 @@ import { Enemies } from './enemies.js';
 import { Pods } from './pods.js';
 import { Bonuses } from './bonuses.js';
 import { Explosions } from './explosions.js';
-import { Starfield } from './starfield.js';
+import { Environment } from './render/environment.js';
 import { Radar } from './radar.js';
 import { OrientationInset } from './orientation.js';
 import { HUD } from './hud.js';
 import { PODS_PER_LEVEL } from './levels.js';
+import { makeLevelFSM, stepLevelFSM } from '../shared/sim/rules.js';
 
 const canvas = document.getElementById('view');
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
@@ -40,19 +41,18 @@ const explosions = new Explosions(scene);
 const enemies = new Enemies(scene);
 const pods = new Pods(scene);
 const bonuses = new Bonuses(scene);
-const starfield = new Starfield(scene);
+const environment = new Environment(scene);
 const radar = new Radar();
 const orient = new OrientationInset();
 const hud = new HUD();
 
 let score = 0;
-let state = 'playing';   // 'playing' | 'won' | 'lost'
-let stateTimer = 0;
+const fsm = makeLevelFSM();   // { state:'playing'|'won'|'lost', timer }
 let deadAt = 0;          // performance.now() when the player was destroyed
 
 enemies.onKill = (e) => { score += e.stats.score; };
 
-window.__nw = { scene, camera, player, enemies, pods, bonuses, weapons, explosions, radar, input, audio, hud, paused: false, get score() { return score; }, get state() { return state; } };
+window.__nw = { scene, camera, player, enemies, pods, bonuses, weapons, explosions, environment, radar, input, audio, hud, paused: false, get score() { return score; }, get state() { return fsm.state; } };
 
 canvas.addEventListener('mousedown', () => { audio.resume(); hud.hideHelp(); }, { once: true });
 
@@ -73,7 +73,7 @@ function startLevel(n) {
   pods.spawnLevel(PODS_PER_LEVEL, player.position);
   bonuses.reset();
   player.reset();
-  state = 'playing';
+  fsm.state = 'playing';
   hud.flash('LEVEL ' + n, 2.2);
 }
 
@@ -151,7 +151,6 @@ function frame(now) {
   }
   weapons.update(simDt, player, enemies, pods, explosions, audio, onWeaponEvent, bonuses);
   explosions.update(simDt);
-  starfield.update(player);
   radar.update(player, enemies, pods, bonuses);
   orient.update(player);
 
@@ -163,22 +162,15 @@ function frame(now) {
     hud.flash('', 0);
   }
 
-  // --- level win / lose (paused while the player is dead) --------------
-  if (simDt > 0 && player.alive && state === 'playing') {
-    if (pods.alive === 0) {
-      state = 'lost';
-      stateTimer = 3.0;
-      hud.flash('ALL PODS LOST — LEVEL FAILED', 3.0);
-    } else if (enemies.cleared()) {
-      state = 'won';
-      stateTimer = 2.8;
-      hud.flash('LEVEL ' + enemies.level + ' CLEARED', 2.8);
-    }
-  } else if (simDt > 0 && player.alive && state !== 'playing') {
-    stateTimer -= simDt;
-    if (stateTimer <= 0) {
-      startLevel(state === 'won' ? enemies.level + 1 : enemies.level);
-    }
+  // --- level win / lose (shared FSM; paused while the player is dead) ---
+  const action = stepLevelFSM(
+    fsm,
+    { podsAlive: pods.alive, enemiesCleared: enemies.cleared(), level: enemies.level },
+    (simDt > 0 && player.alive) ? simDt : 0,
+  );
+  if (action) {
+    if (action.flash) hud.flash(action.flash, action.hold);
+    if (action.startLevel) startLevel(action.startLevel);
   }
 
   // camera: first-person while alive; a fixed wreck-cam that pans to the
@@ -199,6 +191,10 @@ function frame(now) {
     camera.position.copy(specPos);
     camera.quaternion.copy(specQuat);
   }
+
+  // background tracks the final camera position (stars never translate when
+  // you fly), so update it after the camera is placed
+  environment.update(player, camera);
 
   const W = window.innerWidth;
   const H = window.innerHeight;
