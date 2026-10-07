@@ -1,0 +1,432 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Koku Performance Demo</title><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+html,body{margin:0;height:100%;background:#0d1626;overflow:hidden}
+#stage{position:absolute;left:50%;top:50%;width:1920px;height:1080px;transform-origin:center}
+section{position:absolute;inset:0;width:1920px;height:1080px;box-sizing:border-box;overflow:hidden}
+section:not(.on){display:none!important}
+section *{margin:0;box-sizing:border-box}
+section ul{padding-left:1.2em}
+section li{margin-bottom:6px}
+table{border-collapse:collapse;width:100%}
+th,td{padding:0.35em 0.6em;border-bottom:1px solid rgba(21,35,59,.18);vertical-align:top}
+th{font-weight:600}
+#nav{position:fixed;right:16px;bottom:12px;color:#8fa1b8;font:14px 'IBM Plex Sans',sans-serif;user-select:none}
+</style></head><body>
+<div id="stage">
+<section id="cover" data-transition="fade" style="background:#15233B;color:#F6F4EF;font-family:'IBM Plex Sans', Arial, sans-serif;padding:128px;display:flex;flex-direction:column;justify-content:space-between">
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:28px;color:#F2A365;letter-spacing:2px">COST MANAGEMENT · KOKU · DEMO</p>
+<div style="display:flex;flex-direction:column;gap:36px">
+<h1 style="font-size:120px;font-weight:700;line-height:1.05;color:#F6F4EF">Koku performance</h1>
+<p style="font-size:44px;color:#B9C6D6;line-height:1.3;width:1400px">What we changed, what it did, and how we found it</p>
+</div>
+<div style="display:flex;justify-content:space-between;align-items:end">
+<p style="font-size:30px;color:#B9C6D6">Martin Povolny · 7 October 2026</p>
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:24px;color:#7DB7E8">COST-8235 → COST-8371</p>
+</div>
+</section>
+
+<section id="problem" data-transition="fade" style="background:#F6F4EF;color:#15233B;font-family:'IBM Plex Sans', Arial, sans-serif;padding:128px 128px 160px;display:flex;flex-direction:column;gap:56px">
+<div style="display:flex;flex-direction:column;gap:16px">
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:24px;color:#C8571B;letter-spacing:2px">THE PROBLEM</p>
+<h2 style="font-size:64px;font-weight:600;line-height:1.1;color:#15233B">One customer case exposed a fleet-wide problem</h2>
+</div>
+<div style="display:flex;gap:48px;flex:1">
+<div style="flex:1;display:flex;flex-direction:column;gap:20px;background:#FFFFFC;padding:48px 40px;border:1px solid #DCD8CE;border-radius:16px">
+<p style="font-size:112px;font-weight:700;line-height:1;color:#C8571B">30.2 s</p>
+<p style="font-size:30px;line-height:1.35;color:#3D4A5C">The 3scale gateway deadline. Banco do Brasil's reports returned 504 while the database kept working.</p>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:20px;background:#FFFFFC;padding:48px 40px;border:1px solid #DCD8CE;border-radius:16px">
+<p style="font-size:112px;font-weight:700;line-height:1;color:#C8571B">970</p>
+<p style="font-size:30px;line-height:1.35;color:#3D4A5C">Gateway timeouts across all customers in one week (29 Sep – 6 Oct).</p>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:20px;background:#FFFFFC;padding:48px 40px;border:1px solid #DCD8CE;border-radius:16px">
+<p style="font-size:112px;font-weight:700;line-height:1;color:#C8571B">1,693</p>
+<p style="font-size:30px;line-height:1.35;color:#3D4A5C">Timeouts for one customer's 42,176 API calls in 7 days — a report script plus a /sources/ poller.</p>
+</div>
+</div>
+<p style="position:absolute;left:128px;bottom:64px;width:1664px;font-size:24px;color:#5A6576">Koku performance · phase 1 · Source: 3scale gateway logs in Kibana (gateway.status 009)</p>
+</section>
+
+<section id="clocks" data-transition="fade" style="background:#F6F4EF;color:#15233B;font-family:'IBM Plex Sans', Arial, sans-serif;padding:128px 128px 160px;display:flex;flex-direction:column;gap:44px">
+<div style="display:flex;flex-direction:column;gap:16px">
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:24px;color:#C8571B;letter-spacing:2px">OBSERVABILITY FIRST</p>
+<h2 style="font-size:64px;font-weight:600;line-height:1.1;color:#15233B">Before fixing anything, we made timeouts visible</h2>
+</div>
+<div style="display:flex;gap:48px">
+<div style="width:520px;display:flex;flex-direction:column;gap:18px;background:#FCEFE3;padding:36px;border-left:6px solid #C8571B;border-radius:12px">
+<h3 style="font-size:34px;font-weight:600;color:#C8571B">Where we started</h3>
+<p style="font-size:26px;line-height:1.45;color:#3D4A5C">Only requests that reached the 90 s Gunicorn kill were captured: ~1,400 GlitchTip events saying "exit 1", with no request path.</p>
+<p style="font-size:26px;line-height:1.45;color:#3D4A5C">The customer's 504 came at 30 s. No database logs to search, no way to EXPLAIN in prod.</p>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:18px">
+<div style="display:flex;gap:24px;align-items:start">
+<p style="width:150px;font-family:'JetBrains Mono', 'Courier New', monospace;font-size:24px;color:#1F6FB2">COST-8005</p>
+<p style="flex:1;font-size:28px;line-height:1.35;color:#15233B">Timeouts carry path, method and duration</p>
+</div>
+<div style="display:flex;gap:24px;align-items:start">
+<p style="width:150px;font-family:'JetBrains Mono', 'Courier New', monospace;font-size:24px;color:#1F6FB2">COST-8238</p>
+<p style="flex:1;font-size:28px;line-height:1.35;color:#15233B">Stack captured at 30 s, where the 504 happens</p>
+</div>
+<div style="display:flex;gap:24px;align-items:start">
+<p style="width:150px;font-family:'JetBrains Mono', 'Courier New', monospace;font-size:24px;color:#1F6FB2">COST-8236</p>
+<p style="flex:1;font-size:28px;line-height:1.35;color:#15233B">CloudWatch PostgreSQL logs, writer and read replica</p>
+</div>
+<div style="display:flex;gap:24px;align-items:start">
+<p style="width:150px;font-family:'JetBrains Mono', 'Courier New', monospace;font-size:24px;color:#1F6FB2">COST-8237</p>
+<p style="flex:1;font-size:28px;line-height:1.35;color:#15233B">Gabi for writer and replica: EXPLAIN on prod data</p>
+</div>
+<div style="display:flex;gap:24px;align-items:start">
+<p style="width:150px;font-family:'JetBrains Mono', 'Courier New', monospace;font-size:24px;color:#1F6FB2">Tooling</p>
+<p style="flex:1;font-size:28px;line-height:1.35;color:#15233B">Kibana API dashboard; Grafana fixes in Koku, deployed via app-interface; CLI scripts in service-docs</p>
+</div>
+</div>
+</div>
+<p style="font-size:30px;line-height:1.4;color:#15233B;background:#DCE8F4;padding:24px 32px;border-left:6px solid #1F6FB2;border-radius:8px">Every number in this talk exists because of this step.</p>
+<p style="position:absolute;left:128px;bottom:64px;width:1664px;font-size:24px;color:#5A6576">Koku performance · REQUEST_FAULTHANDLER_TIMEOUT=30, REQUEST_SOFT_TIMEOUT=32 (app-interface !208805)</p>
+</section>
+
+<section id="loop" data-transition="fade" style="background:#EAEEF2;color:#15233B;font-family:'IBM Plex Sans', Arial, sans-serif;padding:128px 128px 160px;display:flex;flex-direction:column;gap:56px">
+<div style="display:flex;flex-direction:column;gap:16px">
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:24px;color:#1F6FB2;letter-spacing:2px">HOW WE FOUND IT</p>
+<h2 style="font-size:64px;font-weight:600;line-height:1.1;color:#15233B">The evidence loop</h2>
+</div>
+<div style="display:flex;gap:24px">
+<div style="flex:1;display:flex;flex-direction:column;gap:14px;background:#FBFCFD;padding:32px 24px;border:1px solid #C9D3DD;border-radius:16px">
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:28px;color:#C8571B">01</p>
+<h3 style="font-size:36px;font-weight:600;color:#15233B">Count</h3>
+<p style="font-size:24px;line-height:1.35;color:#3D4A5C">Kibana: every 3scale timeout, by tenant and request shape</p>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:14px;background:#FBFCFD;padding:32px 24px;border:1px solid #C9D3DD;border-radius:16px">
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:28px;color:#C8571B">02</p>
+<h3 style="font-size:36px;font-weight:600;color:#15233B">Classify</h3>
+<p style="font-size:24px;line-height:1.35;color:#3D4A5C">Code path for each shape; collateral or slow on its own</p>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:14px;background:#FBFCFD;padding:32px 24px;border:1px solid #C9D3DD;border-radius:16px">
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:28px;color:#C8571B">03</p>
+<h3 style="font-size:36px;font-weight:600;color:#15233B">Attribute</h3>
+<p style="font-size:24px;line-height:1.35;color:#3D4A5C">CloudWatch log of the read replica: which SQL, how long</p>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:14px;background:#FBFCFD;padding:32px 24px;border:1px solid #C9D3DD;border-radius:16px">
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:28px;color:#C8571B">04</p>
+<h3 style="font-size:36px;font-weight:600;color:#15233B">Reproduce</h3>
+<p style="font-size:24px;line-height:1.35;color:#3D4A5C">Gabi on the replica: bounded EXPLAIN ANALYZE, compare plans</p>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:14px;background:#FBFCFD;padding:32px 24px;border:1px solid #C9D3DD;border-radius:16px">
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:28px;color:#C8571B">05</p>
+<h3 style="font-size:36px;font-weight:600;color:#15233B">Fix</h3>
+<p style="font-size:24px;line-height:1.35;color:#3D4A5C">Small PR, parity tests, behind an Unleash flag</p>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:14px;background:#FBFCFD;padding:32px 24px;border:1px solid #C9D3DD;border-radius:16px">
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:28px;color:#C8571B">06</p>
+<h3 style="font-size:36px;font-weight:600;color:#15233B">Measure</h3>
+<p style="font-size:24px;line-height:1.35;color:#3D4A5C">Enable per tenant, count timeouts again, then widen</p>
+</div>
+</div>
+<p style="font-size:32px;line-height:1.4;color:#15233B;background:#DCE8F4;padding:28px 36px;border-left:6px solid #1F6FB2;border-radius:8px">Same anchors at every step: timestamp, tenant, request path, pod, database PID. Every claim links to raw evidence.</p>
+<p style="position:absolute;left:128px;bottom:64px;width:1664px;font-size:24px;color:#5A6576">Koku performance · phase 1</p>
+</section>
+
+<section id="tools" data-transition="fade" style="background:#EAEEF2;color:#15233B;font-family:'IBM Plex Sans', Arial, sans-serif;padding:128px 128px 160px;display:flex;flex-direction:column;gap:40px">
+<div style="display:flex;flex-direction:column;gap:16px">
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:24px;color:#1F6FB2;letter-spacing:2px">HOW WE FOUND IT</p>
+<h2 style="font-size:64px;font-weight:600;line-height:1.1;color:#15233B">Each tool answers one question</h2>
+</div>
+<table style="font-size:26px;color:#15233B">
+<tr><th style="width:27%;text-align:left">Tool</th><th style="width:40%;text-align:left">Question it answers</th><th style="width:33%;text-align:left">Used for</th></tr>
+<tr><td style="width:27%">Kibana · 3scale logs</td><td style="width:40%">Which requests timed out, for whom, with which filters?</td><td style="width:33%">970 timeouts classified by shape</td></tr>
+<tr><td style="width:27%">CloudWatch · replica log</td><td style="width:40%">Which SQL ran around that second, and how long?</td><td style="width:33%">Tag-key query at 28–33 s</td></tr>
+<tr><td style="width:27%">Gabi (replica / writer)</td><td style="width:40%">What does the plan do? Who holds locks now?</td><td style="width:33%">Bounded EXPLAIN ANALYZE</td></tr>
+<tr><td style="width:27%">PEV2</td><td style="width:40%">Where do the two plans differ?</td><td style="width:33%">Baseline vs optimized, side by side</td></tr>
+<tr><td style="width:27%">Unleash</td><td style="width:40%">Can we turn it on for one tenant, and off instantly?</td><td style="width:33%">Every risky fix behind a flag</td></tr>
+<tr><td style="width:27%">oc · Turnpike</td><td style="width:40%">What are workers and queues doing?</td><td style="width:33%">Queue split by tenant</td></tr>
+<tr><td style="width:27%">Work log/personal wiki</td><td style="width:40%">Can we repeat it tomorrow, with the evidence written down?</td><td style="width:33%">Skills, scripts, daily pages</td></tr>
+</table>
+<p style="position:absolute;left:128px;bottom:64px;width:1664px;font-size:24px;color:#5A6576">Koku performance · phase 1 · All production access read-only unless stated</p>
+</section>
+
+<section id="coverage" data-transition="fade" style="background:#15233B;color:#F6F4EF;font-family:'IBM Plex Sans', Arial, sans-serif;padding:128px 128px 160px;display:flex;flex-direction:column;gap:48px">
+<div style="display:flex;flex-direction:column;gap:16px">
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:24px;color:#F2A365;letter-spacing:2px">WHAT WE CHANGED</p>
+<h2 style="font-size:64px;font-weight:600;line-height:1.1;color:#F6F4EF">86% of a week's timeouts match a fix we built</h2>
+</div>
+<div style="display:flex;flex-direction:column;gap:22px">
+<div style="display:flex;align-items:center;gap:24px">
+<p style="width:560px;font-size:30px;color:#F6F4EF">#6312 cluster-filter index hint</p>
+<div style="width:760px;height:44px;background:#F2A365;border-radius:6px"></div>
+<p style="font-size:28px;color:#F2A365;white-space:nowrap">623 · off in prod</p>
+</div>
+<div style="display:flex;align-items:center;gap:24px">
+<p style="width:560px;font-size:30px;color:#F6F4EF">#6313 capacity from by-node summary</p>
+<div style="width:105px;height:44px;background:#F2A365;border-radius:6px"></div>
+<p style="font-size:28px;color:#F2A365;white-space:nowrap">86 · off in prod</p>
+</div>
+<div style="display:flex;align-items:center;gap:24px">
+<p style="width:560px;font-size:30px;color:#F6F4EF">#6330 bulk /sources/ list</p>
+<div style="width:99px;height:44px;background:#F2A365;border-radius:6px"></div>
+<p style="font-size:28px;color:#F2A365;white-space:nowrap">81 · off in prod</p>
+</div>
+<div style="display:flex;align-items:center;gap:24px">
+<p style="width:560px;font-size:30px;color:#F6F4EF">#6295 capacity single scan</p>
+<div style="width:49px;height:44px;background:#7DB7E8;border-radius:6px"></div>
+<p style="font-size:28px;color:#7DB7E8;white-space:nowrap">40 · on in prod</p>
+</div>
+<div style="display:flex;align-items:center;gap:24px">
+<p style="width:560px;font-size:30px;color:#F6F4EF">#6293 / #6297 ranked project delta</p>
+<div style="width:11px;height:44px;background:#7DB7E8;border-radius:6px"></div>
+<p style="font-size:28px;color:#7DB7E8;white-space:nowrap">9 · on in prod</p>
+</div>
+<div style="display:flex;align-items:center;gap:24px">
+<p style="width:560px;font-size:30px;color:#B9C6D6">Not covered (74 of them collateral)</p>
+<div style="width:143px;height:44px;background:#5D6B80;border-radius:6px"></div>
+<p style="font-size:28px;color:#B9C6D6;white-space:nowrap">117 + 14 conditional</p>
+</div>
+</div>
+<p style="position:absolute;left:128px;bottom:64px;width:1664px;font-size:24px;color:#B9C6D6">Koku performance · phase 1 · 970 gateway timeouts, 29 Sep 20:17 – 6 Oct 20:17 UTC, matched by request shape to each fix's code conditions</p>
+</section>
+
+<section id="fixes" data-transition="fade" style="background:#F6F4EF;color:#15233B;font-family:'IBM Plex Sans', Arial, sans-serif;padding:128px 128px 160px;display:flex;flex-direction:column;gap:48px">
+<div style="display:flex;flex-direction:column;gap:16px">
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:24px;color:#C8571B;letter-spacing:2px">WHAT WE CHANGED</p>
+<h2 style="font-size:64px;font-weight:600;line-height:1.1;color:#15233B">Thirteen small changes, each one reversible</h2>
+</div>
+<div style="display:flex;gap:28px">
+<div style="flex:1;display:flex;flex-direction:column;gap:16px;background:#FFFFFC;padding:32px;border:1px solid #DCD8CE;border-top:8px solid #1F6FB2;border-radius:12px">
+<h3 style="font-size:32px;font-weight:600;color:#1F6FB2">On in prod</h3>
+<ul style="font-size:24px;line-height:1.4;color:#3D4A5C">
+<li>Distinct-array aggregates #6276 #6287</li>
+<li>Identity exchange rate #6292</li>
+<li>Ranked project delta #6293</li>
+<li>Capacity single scan #6295</li>
+<li>Combined distributed cost #6297</li>
+</ul>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:16px;background:#FFFFFC;padding:32px;border:1px solid #DCD8CE;border-top:8px solid #C8571B;border-radius:12px">
+<h3 style="font-size:32px;font-weight:600;color:#C8571B">In prod, flag off</h3>
+<ul style="font-size:24px;line-height:1.4;color:#3D4A5C">
+<li>Cluster-filter index hint #6312</li>
+<li>Capacity from by-node summary #6313</li>
+<li>Bulk /sources/ list #6330</li>
+<li>OCP report rate limit #6311</li>
+<li>Partition pre-creation #6324</li>
+</ul>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:16px;background:#FFFFFC;padding:32px;border:1px solid #DCD8CE;border-top:8px solid #2E7D5B;border-radius:12px">
+<h3 style="font-size:32px;font-weight:600;color:#2E7D5B">Live, no flag</h3>
+<ul style="font-size:24px;line-height:1.4;color:#3D4A5C">
+<li>Worker kills from Sentry repr #6325</li>
+<li>Manifest index #6329</li>
+</ul>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:16px;background:#FFFFFC;padding:32px;border:1px solid #DCD8CE;border-top:8px solid #5A6576;border-radius:12px">
+<h3 style="font-size:32px;font-weight:600;color:#5A6576">Open PRs</h3>
+<ul style="font-size:24px;line-height:1.4;color:#3D4A5C">
+<li>Tag keys on report periods #6342</li>
+</ul>
+</div>
+</div>
+<p style="font-size:30px;line-height:1.4;color:#3D4A5C">Every flag is an enablement flag: off by default, on per tenant (schema stickiness), legacy path kept until a full billing cycle on.</p>
+<p style="position:absolute;left:128px;bottom:64px;width:1664px;font-size:24px;color:#5A6576">Koku performance · phase 1 · Status on 7 Oct 2026 (stage: all flags on at 100%)</p>
+</section>
+
+<section id="measured" data-transition="fade" style="background:#F6F4EF;color:#15233B;font-family:'IBM Plex Sans', Arial, sans-serif;padding:128px 128px 160px;display:flex;flex-direction:column;gap:48px">
+<div style="display:flex;flex-direction:column;gap:16px">
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:24px;color:#C8571B;letter-spacing:2px">WHAT IT DID</p>
+<h2 style="font-size:64px;font-weight:600;line-height:1.1;color:#15233B">Measured on the same SQL, before and after</h2>
+</div>
+<div style="display:flex;gap:24px">
+<div style="flex:1;display:flex;flex-direction:column;gap:12px;background:#FFFFFC;padding:36px 28px;border:1px solid #DCD8CE;border-radius:16px">
+<p style="font-size:88px;font-weight:700;line-height:1;color:#1F6FB2">520×</p>
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:24px;color:#15233B">8.3 s → 0.016 s</p>
+<p style="font-size:24px;line-height:1.35;color:#3D4A5C">Distinct-metadata backfill, cluster filter resolved to sources · #6312</p>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:12px;background:#FFFFFC;padding:36px 28px;border:1px solid #DCD8CE;border-radius:16px">
+<p style="font-size:88px;font-weight:700;line-height:1;color:#1F6FB2">7×</p>
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:24px;color:#15233B">13 s → 1.8 s</p>
+<p style="font-size:24px;line-height:1.35;color:#3D4A5C">Capacity count, one-day cold query · #6312</p>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:12px;background:#FFFFFC;padding:36px 28px;border:1px solid #DCD8CE;border-radius:16px">
+<p style="font-size:88px;font-weight:700;line-height:1;color:#1F6FB2">8×</p>
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:24px;color:#15233B">8.1 s → 1.0 s</p>
+<p style="font-size:24px;line-height:1.35;color:#3D4A5C">Tag keys filtered on report periods · #6342</p>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:12px;background:#FFFFFC;padding:36px 28px;border:1px solid #DCD8CE;border-radius:16px">
+<p style="font-size:88px;font-weight:700;line-height:1;color:#1F6FB2">2.1×</p>
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:24px;color:#15233B">7.8 s → 3.6 s</p>
+<p style="font-size:24px;line-height:1.35;color:#3D4A5C">Combined distributed-cost delta, warmed · #6297</p>
+</div>
+</div>
+<p style="font-size:30px;line-height:1.4;color:#3D4A5C;background:#FCEFE3;padding:24px 32px;border-left:6px solid #C8571B;border-radius:8px">Bounded EXPLAIN ANALYZE on the read replica, one query shape each: evidence that the fix works, not an end-to-end API timing.</p>
+<p style="position:absolute;left:128px;bottom:64px;width:1664px;font-size:24px;color:#5A6576">Koku performance · phase 1 · Replica measurements via Gabi</p>
+</section>
+
+<section id="rollout" data-transition="fade" style="background:#EAEEF2;color:#15233B;font-family:'IBM Plex Sans', Arial, sans-serif;padding:128px 128px 160px;display:flex;flex-direction:column;gap:48px">
+<div style="display:flex;flex-direction:column;gap:16px">
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:24px;color:#1F6FB2;letter-spacing:2px">WHAT IT DID</p>
+<h2 style="font-size:64px;font-weight:600;line-height:1.1;color:#15233B">A flag is done when it is deleted</h2>
+</div>
+<div style="display:flex;gap:20px">
+<div style="flex:1;display:flex;flex-direction:column;gap:14px;background:#FBFCFD;padding:32px 28px;border:1px solid #C9D3DD;border-top:8px solid #C8571B;border-radius:12px">
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:24px;color:#C8571B">1 RELEASE</p>
+<p style="font-size:26px;line-height:1.35;color:#15233B">In the prod image, flag off</p>
+<p style="font-size:24px;line-height:1.35;color:#3D4A5C">#6312 #6313 #6330 #6311 #6324</p>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:14px;background:#FBFCFD;padding:32px 28px;border:1px solid #C9D3DD;border-top:8px solid #C8571B;border-radius:12px">
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:24px;color:#C8571B">2 TARGET</p>
+<p style="font-size:26px;line-height:1.35;color:#15233B">One tenant first</p>
+<p style="font-size:24px;line-height:1.35;color:#3D4A5C">Next: #6312 #6313 #6330 for Banco do Brasil</p>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:14px;background:#FBFCFD;padding:32px 28px;border:1px solid #C9D3DD;border-top:8px solid #1F6FB2;border-radius:12px">
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:24px;color:#1F6FB2">3 VALIDATE</p>
+<p style="font-size:26px;line-height:1.35;color:#15233B">Parity, replica timing, timeout counts</p>
+<p style="font-size:24px;line-height:1.35;color:#3D4A5C">#6292 #6293 #6295 #6297, on since 6 Oct</p>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:14px;background:#FBFCFD;padding:32px 28px;border:1px solid #C9D3DD;border-top:8px solid #1F6FB2;border-radius:12px">
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:24px;color:#1F6FB2">4 EXPAND</p>
+<p style="font-size:26px;line-height:1.35;color:#15233B">All tenants, keep watching</p>
+<p style="font-size:24px;line-height:1.35;color:#3D4A5C">Distinct arrays, all tenants since 28 Sep</p>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:14px;background:#FBFCFD;padding:32px 28px;border:1px solid #C9D3DD;border-top:8px solid #5A6576;border-radius:12px">
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:24px;color:#5A6576">5 REMOVE</p>
+<p style="font-size:26px;line-height:1.35;color:#15233B">Delete legacy path and flag</p>
+<p style="font-size:24px;line-height:1.35;color:#3D4A5C">After one billing cycle on (first: #6337)</p>
+</div>
+</div>
+<p style="font-size:30px;line-height:1.4;color:#15233B;background:#DCE8F4;padding:24px 32px;border-left:6px solid #1F6FB2;border-radius:8px">Rollback is one toggle in Unleash, per tenant, with no deploy.</p>
+<p style="position:absolute;left:128px;bottom:64px;width:1664px;font-size:24px;color:#5A6576">Koku performance · phase 1 · Flags: cost-management.backend.&lt;feature&gt;, stickiness = schema</p>
+</section>
+
+<section id="firstnight" data-transition="fade" style="background:#F6F4EF;color:#15233B;font-family:'IBM Plex Sans', Arial, sans-serif;padding:128px 128px 160px;display:flex;flex-direction:column;gap:40px">
+<div style="display:flex;flex-direction:column;gap:16px">
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:24px;color:#C8571B;letter-spacing:2px">WHAT IT DID</p>
+<h2 style="font-size:64px;font-weight:600;line-height:1.1;color:#15233B">First night with four flags on in prod</h2>
+</div>
+<table style="font-size:28px;color:#15233B">
+<tr><th style="width:34%;text-align:left">Night, 20:00–08:00 UTC</th><th style="width:22%;text-align:right">Banco calls</th><th style="width:22%;text-align:right">Banco timeouts</th><th style="width:22%;text-align:right">Other tenants</th></tr>
+<tr><td style="width:34%">29–30 Sep</td><td style="width:22%;text-align:right">7,159</td><td style="width:22%;text-align:right">66</td><td style="width:22%;text-align:right">87</td></tr>
+<tr><td style="width:34%">1–2 Oct</td><td style="width:22%;text-align:right">6,175</td><td style="width:22%;text-align:right">118</td><td style="width:22%;text-align:right">37</td></tr>
+<tr><td style="width:34%">2–3 Oct</td><td style="width:22%;text-align:right">8,391</td><td style="width:22%;text-align:right">50</td><td style="width:22%;text-align:right">19</td></tr>
+<tr style="background:#DCE8F4"><td style="width:34%"><b>6–7 Oct, flags on</b></td><td style="width:22%;text-align:right"><b>9,161</b></td><td style="width:22%;text-align:right"><b>63</b></td><td style="width:22%;text-align:right"><b>2</b></td></tr>
+</table>
+<div style="display:flex;gap:32px">
+<p style="flex:1;font-size:28px;line-height:1.4;color:#3D4A5C;background:#FCEFE3;padding:24px 32px;border-left:6px solid #C8571B;border-radius:8px">All 63 Banco timeouts were compute, memory or costs with <b>filter[cluster]</b>: exactly the shape #6312 fixes, still off in prod.</p>
+<p style="flex:1;font-size:28px;line-height:1.4;color:#15233B;background:#DCE8F4;padding:24px 32px;border-left:6px solid #1F6FB2;border-radius:8px">Other tenants: 2 timeouts, against 5–87 on earlier nights. One night is a signal, not yet a trend.</p>
+</div>
+<p style="position:absolute;left:128px;bottom:64px;width:1664px;font-size:24px;color:#5A6576">Koku performance · phase 1 · 3scale gateway logs (status 009), nights when Banco's script ran; 7 Oct 2026 ~08:30 UTC</p>
+</section>
+
+<section id="pipeline" data-transition="fade" style="background:#EAEEF2;color:#15233B;font-family:'IBM Plex Sans', Arial, sans-serif;padding:128px 128px 160px;display:flex;flex-direction:column;gap:48px">
+<div style="display:flex;flex-direction:column;gap:16px">
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:24px;color:#1F6FB2;letter-spacing:2px">BEYOND THE API</p>
+<h2 style="font-size:64px;font-weight:600;line-height:1.1;color:#15233B">Workers, indexes, partitions and queues</h2>
+</div>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:28px">
+<div style="display:flex;flex-direction:column;gap:12px;background:#FBFCFD;padding:32px 36px;border:1px solid #C9D3DD;border-radius:16px">
+<h3 style="font-size:32px;font-weight:600;color:#15233B">Worker kills · #6325 · live</h3>
+<p style="font-size:26px;line-height:1.4;color:#3D4A5C">Error reporting rendered a dataclass that held a QuerySet, re-running the slow capacity query inside the error handler.</p>
+</div>
+<div style="display:flex;flex-direction:column;gap:12px;background:#FBFCFD;padding:32px 36px;border:1px solid #C9D3DD;border-radius:16px">
+<h3 style="font-size:32px;font-weight:600;color:#15233B">Partitions · #6324 · flag off</h3>
+<p style="font-size:26px;line-height:1.4;color:#3D4A5C">Next month's table partitions created ahead of time, every 8 hours, create-only.</p>
+</div>
+<div style="display:flex;flex-direction:column;gap:12px;background:#FBFCFD;padding:32px 36px;border:1px solid #C9D3DD;border-radius:16px">
+<h3 style="font-size:32px;font-weight:600;color:#15233B">Manifest index · #6329 · live</h3>
+<p style="font-size:26px;line-height:1.4;color:#3D4A5C">Index on manifests by source and creation time for the /sources/ list. Built in prod on 6 Oct: 64 MB, valid.</p>
+</div>
+<div style="display:flex;flex-direction:column;gap:12px;background:#FBFCFD;padding:32px 36px;border:1px solid #C9D3DD;border-radius:16px">
+<h3 style="font-size:32px;font-weight:600;color:#15233B">Rate-limit locks · found today</h3>
+<p style="font-size:26px;line-height:1.4;color:#3D4A5C">Expired worker-cache locks still counted as running: one tenant re-queued over 10,000 times on 6 Oct.</p>
+</div>
+</div>
+<p style="position:absolute;left:128px;bottom:64px;width:1664px;font-size:24px;color:#5A6576">Koku performance · phase 1 · Index migration via app-interface !210137, 6 Oct 16:00–18:26 UTC</p>
+</section>
+
+<section id="workflow" data-transition="fade" style="background:#15233B;color:#F6F4EF;font-family:'IBM Plex Sans', Arial, sans-serif;padding:128px 128px 160px;display:flex;flex-direction:column;gap:56px">
+<div style="display:flex;flex-direction:column;gap:16px">
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:24px;color:#F2A365;letter-spacing:2px">HOW WE WORKED</p>
+<h2 style="font-size:64px;font-weight:600;line-height:1.1;color:#F6F4EF">An agent with read-only access, and a written trail</h2>
+</div>
+<div style="display:flex;gap:32px">
+<div style="flex:1;display:flex;flex-direction:column;gap:18px;background:#1E3150;padding:40px 36px;border-radius:16px">
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:#7DB7E8;width:56px;height:56px" aria-label="Search"><circle cx="11" cy="11" r="7"/><line x1="16.5" y1="16.5" x2="21" y2="21"/></svg>
+<h3 style="font-size:34px;font-weight:600;color:#F6F4EF">Investigate</h3>
+<p style="font-size:26px;line-height:1.45;color:#B9C6D6">An agent queries oc, Gabi, Kibana and CloudWatch directly.</p>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:18px;background:#1E3150;padding:40px 36px;border-radius:16px">
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:#7DB7E8;width:56px;height:56px" aria-label="Tool"><path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.5 2.5-2.5-2.5z"/></svg>
+<h3 style="font-size:34px;font-weight:600;color:#F6F4EF">Repeat</h3>
+<p style="font-size:26px;line-height:1.45;color:#B9C6D6">Skills and scripts: 3scale extract per org, Gabi replica wrapper, Unleash helper.</p>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:18px;background:#1E3150;padding:40px 36px;border-radius:16px">
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:#7DB7E8;width:56px;height:56px" aria-label="Book"><path d="M4 4h7a3 3 0 0 1 3 3v13a2 2 0 0 0-2-2H4z"/><path d="M20 4h-6a3 3 0 0 0-3 3v13a2 2 0 0 1 2-2h7z"/></svg>
+<h3 style="font-size:34px;font-weight:600;color:#F6F4EF">Write down</h3>
+<p style="font-size:26px;line-height:1.45;color:#B9C6D6">Wiki tracker of every fix, flag and deployment; customer lookup. Each investigation documented. JIRA ticket created.</p>
+</div>
+</div>
+<p style="font-size:30px;line-height:1.4;color:#F6F4EF">The human decides what to ship and when; the agent does the counting and keeps the receipts.</p>
+<p style="position:absolute;left:128px;bottom:64px;width:1664px;font-size:24px;color:#B9C6D6">Koku performance · phase 1</p>
+</section>
+
+<section id="next" data-transition="fade" style="background:#F6F4EF;color:#15233B;font-family:'IBM Plex Sans', Arial, sans-serif;padding:128px 128px 160px;display:flex;flex-direction:column;gap:48px">
+<div style="display:flex;flex-direction:column;gap:16px">
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:24px;color:#C8571B;letter-spacing:2px">NEXT · COST-8371</p>
+<h2 style="font-size:64px;font-weight:600;line-height:1.1;color:#15233B">Phase 2: run the loop every week</h2>
+</div>
+<div style="display:flex;gap:64px">
+<div style="width:520px;display:flex;flex-direction:column;gap:16px">
+<p style="font-size:30px;color:#15233B;background:#DCE8F4;padding:18px 28px;border-radius:12px">1 · Measure the week</p>
+<p style="font-size:30px;color:#15233B;background:#DCE8F4;padding:18px 28px;border-radius:12px">2 · Classify by fix</p>
+<p style="font-size:30px;color:#15233B;background:#DCE8F4;padding:18px 28px;border-radius:12px">3 · Root-cause the rest</p>
+<p style="font-size:30px;color:#15233B;background:#DCE8F4;padding:18px 28px;border-radius:12px">4 · Fix behind a flag</p>
+<p style="font-size:30px;color:#15233B;background:#DCE8F4;padding:18px 28px;border-radius:12px">5 · Roll out, compare</p>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:28px">
+<div style="display:flex;flex-direction:column;gap:8px">
+<h3 style="font-size:34px;font-weight:600;color:#C8571B">Enable #6312, #6313, #6330 in prod</h3>
+<p style="font-size:28px;line-height:1.4;color:#3D4A5C">Banco do Brasil first, then all tenants. Together they match 790 of last week's 970 timeouts (81%).</p>
+</div>
+<div style="display:flex;flex-direction:column;gap:8px">
+<h3 style="font-size:34px;font-weight:600;color:#15233B">Remaining slow shapes</h3>
+<p style="font-size:28px;line-height:1.4;color:#3D4A5C">Merge the tag-key fix #6342; design a fix for the AWS cost-delta script.</p>
+</div>
+<div style="display:flex;flex-direction:column;gap:8px">
+<h3 style="font-size:34px;font-weight:600;color:#15233B">Pipeline</h3>
+<p style="font-size:28px;line-height:1.4;color:#3D4A5C">Stop counting expired rate-limit locks as running tasks.</p>
+</div>
+<div style="display:flex;flex-direction:column;gap:8px">
+<h3 style="font-size:34px;font-weight:600;color:#15233B">Clean up</h3>
+<p style="font-size:28px;line-height:1.4;color:#3D4A5C">Delete flags after a billing cycle; cancel database work after the gateway deadline.</p>
+</div>
+</div>
+</div>
+<p style="position:absolute;left:128px;bottom:64px;width:1664px;font-size:24px;color:#5A6576">Koku performance · phase 2 · COST-8371 under epic COST-8197; first sub-task COST-8372 (#6342)</p>
+</section>
+
+<section id="close" data-transition="fade" style="background:#15233B;color:#F6F4EF;font-family:'IBM Plex Sans', Arial, sans-serif;padding:128px;display:flex;flex-direction:column;justify-content:space-between">
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:28px;color:#F2A365;letter-spacing:2px">TAKEAWAYS</p>
+<div style="display:flex;flex-direction:column;gap:36px">
+<p style="font-size:48px;line-height:1.3;color:#F6F4EF"><span style="color:#7DB7E8">A symptom</span> becomes a counted, timestamped event.</p>
+<p style="font-size:48px;line-height:1.3;color:#F6F4EF"><span style="color:#7DB7E8">A hypothesis</span> becomes a query path and a plan.</p>
+<p style="font-size:48px;line-height:1.3;color:#F6F4EF"><span style="color:#7DB7E8">A fix</span> becomes a parity test, a measurement and a flag.</p>
+<p style="font-size:48px;line-height:1.3;color:#F6F4EF"><span style="color:#7DB7E8">An investigation</span> becomes a skill, not a memory.</p>
+</div>
+<div style="display:flex;justify-content:space-between;align-items:end">
+<p style="font-size:44px;font-weight:600;color:#F6F4EF">Questions?</p>
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:24px;color:#B9C6D6">COST-8235 · COST-8371 · wiki: koku-performance-optimizations</p>
+</div>
+</section>
+
+</div>
+<div id="nav"></div>
+<script>
+const S=[...document.querySelectorAll('#stage > section')],st=document.getElementById('stage'),nav=document.getElementById('nav');
+let i=Math.min(Math.max(parseInt(location.hash.slice(1))-1||0,0),S.length-1);
+function fit(){const k=Math.min(innerWidth/1920,innerHeight/1080);st.style.transform=`translate(-50%,-50%) scale(${k})`;}
+function show(n){i=Math.min(Math.max(n,0),S.length-1);S.forEach((s,j)=>s.classList.toggle('on',j===i));nav.textContent=`${i+1} / ${S.length}`;history.replaceState(null,'','#'+(i+1));}
+addEventListener('keydown',e=>{if(['ArrowRight','PageDown',' ','Enter'].includes(e.key))show(i+1);else if(['ArrowLeft','PageUp','Backspace'].includes(e.key))show(i-1);else if(e.key==='Home')show(0);else if(e.key==='End')show(S.length-1);});
+addEventListener('click',e=>show(e.clientX>innerWidth/3?i+1:i-1));
+addEventListener('resize',fit);fit();show(i);
+</script>
+</body></html>
